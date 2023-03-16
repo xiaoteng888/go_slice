@@ -1,0 +1,56 @@
+{{define "title"}}
+创建
+{{end}}
+
+{{define "main"}}
+<div class="col-md-9 blog-main">
+  <div class="blog-post bg-white p-5 rounded shadow mb-4">
+ {{if .Notice}}
+ <div class="systs">恭喜您，操作成功![<a href="{{RouteName2URL "videos.create"}}">知道了</a>]</div>
+ {{end}}
+    <h3>上传视频</h3>
+
+    <form id="upload-form" action="{{RouteName2URL "videos.store"}}" method="post" enctype="multipart/form-data">
+
+      {{template "form-fields" . }}
+
+      <button type="submit" class="btn btn-primary mt-3">提交</button>
+
+    </form>
+
+  </div>
+</div>
+
+{{end}}
+
+{{define "jscss"}}
+<script>
+
+function tj(){
+let form = document.getElementById("upload-form");
+  // 获取表单数据
+  let formData = new FormData(form);
+  let action = "{{RouteName2URL "videos.store"}}";
+  
+  // 发送ajax请求
+  let xhr = new XMLHttpRequest();
+  
+  xhr.open("POST", action);
+  
+  xhr.send(formData);
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        // ajax请求成功
+        let response = xhr.responseText;
+        console.log(response);
+      } else {
+        // ajax请求失败
+        console.log("ajax请求失败");
+      }
+    }
+  }
+}
+</script>
+{{end}}
