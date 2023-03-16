@@ -12,7 +12,7 @@ func Auth(next HttpHandlerFunc) HttpHandlerFunc {
 
 		if !auth.Check() {
 			flash.Warning("登录用户才能访问此页面")
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
 
