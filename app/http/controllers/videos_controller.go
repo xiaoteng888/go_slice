@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"goblog/app/models/video"
 	"goblog/app/requests"
 	files "goblog/pkg/file"
@@ -30,6 +31,7 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 	//r.ParseForm()
 	// 1. 初始化数据
 	//currentUser := auth.User()
+	fmt.Print("----------1")
 	_video := video.Video{
 		Name: r.PostFormValue("name"),
 	}
@@ -37,6 +39,7 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 	file, handler, err := r.FormFile("uploadFile")
 
 	if err != nil {
+		fmt.Print("----------2")
 		data := view.D{
 			"Video": _video,
 			"err":   "没有选择文件",
@@ -45,16 +48,17 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_video.UpVideo = handler
-
+	fmt.Print("----------3")
 	// 2. 表单验证
 	errors := requests.ValidateVideoForm(_video)
-
+	fmt.Print("----------4")
 	// 3. 检测错误
 	if len(errors) == 0 {
 		video, err := files.SaveUploadVideo(r, handler, file)
+		fmt.Print("----------5")
 		if err != nil {
 			logger.LogError(err)
-
+			fmt.Print("----------6")
 			data := view.D{
 				"Video": _video,
 				"err":   err,
@@ -62,13 +66,16 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 			view.Render(w, data, "videos.create", "videos._form_field")
 			return
 		}
+		fmt.Print("----------7")
 		_video.Url = video
 		_video.Update()
 		//上传成功，开始切片
 		//go files.Slice(video)
+		fmt.Print("----------8")
 		indexURL := route.Name2URL("videos.create")
 		http.Redirect(w, r, indexURL+"?n=1", http.StatusFound)
 	} else {
+		fmt.Print("----------9")
 		view.Render(w, view.D{
 			"Video":  _video,
 			"Errors": errors,
