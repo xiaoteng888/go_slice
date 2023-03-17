@@ -65,7 +65,7 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 		_video.Url = video
 		_video.Update()
 		//上传成功，开始切片
-		go files.Slice(video)
+		//go files.Slice(video)
 		indexURL := route.Name2URL("videos.create")
 		http.Redirect(w, r, indexURL+"?n=1", http.StatusFound)
 	} else {
