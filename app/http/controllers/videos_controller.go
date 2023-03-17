@@ -1,16 +1,13 @@
 package controllers
 
 import (
-	"fmt"
 	"goblog/app/models/video"
 	"goblog/app/requests"
 	files "goblog/pkg/file"
 	"goblog/pkg/logger"
 	"goblog/pkg/route"
 	"goblog/pkg/view"
-	"io"
 	"net/http"
-	"os"
 )
 
 type VideosController struct {
@@ -67,9 +64,9 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 		}
 		_video.Url = video
 		_video.Update()
-
+		//上传成功，开始切片
+		go files.Slice(video)
 		indexURL := route.Name2URL("videos.create")
-		fmt.Print(indexURL + "?n=1")
 		http.Redirect(w, r, indexURL+"?n=1", http.StatusFound)
 	} else {
 		view.Render(w, view.D{
@@ -77,29 +74,4 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 			"Errors": errors,
 		}, "videos.create", "videos._form_field")
 	}
-}
-
-// 处理 /upload  逻辑
-func (*VideosController) Upload(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("method:", r.Method) // 获取请求的方法
-
-	file, handler, err := r.FormFile("uploadFile")
-	if err != nil {
-		data := view.D{
-
-			"err": "没有选择文件",
-		}
-		view.Render(w, data, "videos.create", "videos._form_field")
-		return
-	}
-	defer file.Close()
-	fmt.Fprintf(w, "%v", handler.Header)
-	f, err := os.OpenFile("/storage/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666) // 此处假设当前目录下已存在test目录
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer f.Close()
-	io.Copy(f, file)
-
 }

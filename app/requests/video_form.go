@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"fmt"
 	"path"
 	"strings"
 
@@ -39,7 +38,7 @@ func ValidateVideoForm(data video.Video) map[string][]string {
 	// 5. 自己写一个验证上传视频
 	//检查图片后缀
 	ext := strings.ToLower(path.Ext(data.UpVideo.Filename))
-	fmt.Print(ext)
+
 	if ext != ".mp4" {
 		errs["url"] = append(errs["url"], "视频只能是MP4")
 	}

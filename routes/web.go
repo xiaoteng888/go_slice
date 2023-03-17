@@ -48,7 +48,6 @@ func RegisterWebRoutes(r *mux.Router) {
 	vc := new(controllers.VideosController)
 	r.HandleFunc("/video/create", middlewares.Auth(vc.Create)).Methods("GET").Name("videos.create")
 	r.HandleFunc("/video/store", middlewares.Auth(vc.Store)).Methods("POST").Name("videos.store")
-	r.HandleFunc("/video/upload", middlewares.Auth(vc.Upload)).Methods("POST").Name("videos.upload")
 	r.HandleFunc("/", middlewares.Auth(vc.Create)).Methods("GET").Name("home")
 	// --- 全局中间件 ---
 
