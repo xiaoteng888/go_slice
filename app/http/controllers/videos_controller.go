@@ -9,6 +9,10 @@ import (
 	"goblog/pkg/route"
 	"goblog/pkg/view"
 	"net/http"
+	"sync"
+	"time"
+
+	"github.com/gogf/gf/util/gconv"
 )
 
 type VideosController struct {
@@ -19,7 +23,12 @@ type VideosController struct {
 func (*VideosController) Create(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	n, ok := query["n"]
-	data := view.D{}
+	data := view.D{
+		"videoTypes":    video.VideoTypes,
+		"countries":     video.Countries,
+		"shootingTypes": video.ShootingTypes,
+		"subtitleTypes": video.SubtitleTypes,
+	}
 	if ok {
 		data["Notice"] = n
 	}
@@ -33,7 +42,16 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 	//currentUser := auth.User()
 	fmt.Print("----------1")
 	_video := video.Video{
-		Name: r.PostFormValue("name"),
+		Name:         r.PostFormValue("name"),
+		Description:  r.PostFormValue("description"),
+		Country:      gconv.Int64(r.PostFormValue("country")),
+		VideoType:    gconv.Int64(r.PostFormValue("video_type")),
+		ShootingType: gconv.Int64(r.PostFormValue("shooting_type")),
+		SubtitleType: gconv.Int64(r.PostFormValue("subtitle_type")),
+		Number:       r.PostFormValue("number"),
+		Producer:     r.PostFormValue("producer"),
+		Actor:        r.PostFormValue("actor"),
+		PublishTime:  r.PostFormValue("publish_time"),
 	}
 
 	file, handler, err := r.FormFile("uploadFile")
@@ -67,10 +85,18 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Print("----------7")
-		_video.Url = video
-		_video.Update()
 		//上传成功，开始切片
-		go files.Slice(video)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			// 将视频文件进行切片
+			defer wg.Done()
+			if err := files.Slice(video, _video); err != nil {
+				logger.LogError(err)
+			}
+		}()
+		time.Sleep(1 * time.Second) // 等待1秒钟，确保goroutine有足够的时间来执行
+		wg.Wait()
 		fmt.Print("----------8")
 		indexURL := route.Name2URL("videos.create")
 		http.Redirect(w, r, indexURL+"?n=1", http.StatusFound)

@@ -1,6 +1,6 @@
 {{define "form-fields"}}
       <div class="form-group mt-3">
-        <label for="name">影片名</label>
+        <label for="name">影片名<sup style="color:red">*</sup></label>
         <input type="text" class="form-control {{if .Errors.name }}is-invalid {{end}}" name="name" value="{{ .Video.Name }}" required>
         {{ with .Errors.name }}
           <div class="invalid-feedback">
@@ -10,7 +10,7 @@
       </div>
 
       <div class="form-group mt-3">
-        <label for="url">视频</label>
+        <label for="url">视频<sup style="color:red">*</sup></label>
         <input type="file" class="form-control-file {{if .err }}is-invalid {{end}} {{if .Errors.url }}is-invalid {{end}}" name="uploadFile" />
         {{ with .err }}
           <div class="invalid-feedback">
@@ -19,6 +19,112 @@
         {{ end }}
 
         {{ with .Errors.url }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+      
+      <div class="form-group mt-3">
+        <label for="description">影片描述</label>
+        <input type="text" class="form-control {{if .Errors.description }}is-invalid {{end}}" name="description" value="{{ .Video.Description }}" required>
+        {{ with .Errors.description }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+          <label for="country">国家</label>
+          <select class="form-control {{if .Errors.country }}is-invalid {{end}}" name="country">
+              {{range $code, $name := .countries}}
+                  <option value="{{$code}}" {{if eq $.Video.Country $code}}selected{{end}}>{{$name}}</option>
+              {{end}}
+          </select>
+          {{ with .Errors.country }}
+              <div class="invalid-feedback">
+                  {{ . }}
+              </div>
+          {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+          <label for="video_type">影片类型</label>
+          <select class="form-control {{if .Errors.video_type }}is-invalid {{end}}" name="video_type">
+              {{range $code, $name := .videoTypes}}
+                  <option value="{{$code}}" {{if eq $.Video.VideoType $code}}selected{{end}}>{{$name}}</option>
+              {{end}}
+          </select>
+          {{ with .Errors.video_type }}
+              <div class="invalid-feedback">
+                  {{ . }}
+              </div>
+          {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="shooting_type">拍摄类型</label>
+        <select class="form-control {{if .Errors.shooting_type }}is-invalid {{end}}" name="shooting_type">
+              {{range $code, $name := .shootingTypes}}
+                  <option value="{{$code}}" {{if eq $.Video.shooting_type $code}}selected{{end}}>{{$name}}</option>
+              {{end}}
+        </select>
+        {{ with .Errors.shooting_type }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="subtitle_type">字幕类型</label>
+        <select class="form-control {{if .Errors.subtitle_type }}is-invalid {{end}}" name="subtitle_type">
+              {{range $code, $name := .subtitleTypes}}
+                  <option value="{{$code}}" {{if eq $.Video.SubtitleType $code}}selected{{end}}>{{$name}}</option>
+              {{end}}
+        </select>
+        {{ with .Errors.subtitle_type }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="number">番号</label>
+        <input type="text" class="form-control {{if .Errors.number }}is-invalid {{end}}" name="number" value="{{ .Video.Number }}" required>
+        {{ with .Errors.number }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="producer">制作商</label>
+        <input type="text" class="form-control {{if .Errors.producer }}is-invalid {{end}}" name="producer" value="{{ .Video.Producer }}" required>
+        {{ with .Errors.producer }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="actor">主演</label>
+        <input type="text" class="form-control {{if .Errors.actor }}is-invalid {{end}}" name="actor" value="{{ .Video.Actor }}" required>
+        {{ with .Errors.actor }}
+          <div class="invalid-feedback">
+            {{ . }}
+          </div>
+        {{ end }}
+      </div>
+
+      <div class="form-group mt-3">
+        <label for="publish_time">发行时间</label>
+        <input type="text" class="form-control {{if .Errors.publish_time }}is-invalid {{end}}" name="publish_time" value="{{ .Video.PublishTime }}" required>
+        {{ with .Errors.publish_time }}
           <div class="invalid-feedback">
             {{ . }}
           </div>

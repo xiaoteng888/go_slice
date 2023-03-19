@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"goblog/app/models/video"
 	"goblog/pkg/app"
 	"goblog/pkg/helpers"
+	"goblog/pkg/logger"
 	pkgs3 "goblog/pkg/s3"
 	"io"
 	"io/ioutil"
@@ -51,7 +53,7 @@ func randomNameFromUploadFile(file *multipart.FileHeader) string {
 }
 
 // 切片
-func Slice(inputVideo string) {
+func Slice(inputVideo string, _video video.Video) error {
 
 	// 定义输入视频文件名、输出目录名和切片长度
 	//inputVideo := "./storage/" + name + ".mp4"
@@ -65,12 +67,14 @@ func Slice(inputVideo string) {
 	fmt.Print(url)
 	_, err := os.Stat(url)
 	if os.IsNotExist(err) {
-		panic(fmt.Sprintf("视频文件 %s 不存在", url))
+		fmt.Print("视频文件不存在", url)
+		return err
 	}
 	// 创建切片输出目录
 	err = os.MkdirAll(outputDir, 0755)
 	if err != nil {
-		panic(err)
+		//logger.LogError(err)
+		return err
 	}
 	// 获取视频时长
 	fmt.Println("获取视频时长...")
@@ -78,11 +82,13 @@ func Slice(inputVideo string) {
 	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", url)
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Println(err)
+		//logger.LogError(err)
 		os.Exit(1)
+		return err
 	}
 	duration := string(output)
 	fmt.Printf("视频时长为：%s", duration)
+	_video.Length = duration
 
 	// 切片视频
 	fmt.Println("开始切片视频...")
@@ -92,10 +98,12 @@ func Slice(inputVideo string) {
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println(err)
+		logger.LogError(err)
 		os.Exit(1)
+		return err
 	}
 	fmt.Println("切片完成！")
-
+	_video.Status = video.STATUS_SUCCESS
 	// 删除原始文件
 	os.Remove(url)
 
@@ -104,6 +112,8 @@ func Slice(inputVideo string) {
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+		//logger.LogError(err)
+		return err
 	}
 	fmt.Println("切片文件列表：")
 	for _, file := range files {
@@ -121,11 +131,12 @@ func Slice(inputVideo string) {
 	}
 	bar.Finish()
 
-	UptoS3(outputDir)
+	err = UptoS3(outputDir, _video)
+	return err
 }
 
 // UptoS3 上传到上亚马逊s3
-func UptoS3(dirPath string) {
+func UptoS3(dirPath string, _video video.Video) error {
 
 	if pkgs3.S3Client == nil {
 		fmt.Print("初始化 S3 客户端----------")
@@ -153,6 +164,12 @@ func UptoS3(dirPath string) {
 
 			// 上传文件到 S3
 			key := filepath.Join("xj/"+dirName, info.Name())
+			// 获取文件扩展名
+			ext := filepath.Ext(info.Name())
+			if ext == ".m3u8" {
+				_video.Url = "/" + key
+				_video.Update()
+			}
 
 			_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 				Bucket: &bucket,
@@ -169,8 +186,10 @@ func UptoS3(dirPath string) {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		//logger.LogError(err)
+		return err
 	}
 
 	fmt.Println("所有文件上传成功")
+	return nil
 }
