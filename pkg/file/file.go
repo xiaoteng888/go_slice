@@ -120,6 +120,14 @@ func Slice(inputVideo string, _video video.Video) error {
 		if file.IsDir() {
 			continue
 		}
+		// 获取文件扩展名
+		ext := filepath.Ext(file.Name())
+		if ext == ".m3u8" {
+			dirName := path.Base(outputDir)
+			_video.Url = "/xj/" + dirName + "/" + file.Name()
+			_video.Update()
+		}
+
 		fmt.Println(file.Name())
 	}
 
@@ -131,12 +139,12 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	bar.Finish()
 
-	err = UptoS3(outputDir, _video)
+	err = UptoS3(outputDir)
 	return err
 }
 
 // UptoS3 上传到上亚马逊s3
-func UptoS3(dirPath string, _video video.Video) error {
+func UptoS3(dirPath string) error {
 
 	if pkgs3.S3Client == nil {
 		fmt.Print("初始化 S3 客户端----------")
@@ -164,12 +172,6 @@ func UptoS3(dirPath string, _video video.Video) error {
 
 			// 上传文件到 S3
 			key := filepath.Join("xj/"+dirName, info.Name())
-			// 获取文件扩展名
-			ext := filepath.Ext(info.Name())
-			if ext == ".m3u8" {
-				_video.Url = "/" + key
-				_video.Update()
-			}
 
 			_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 				Bucket: &bucket,
