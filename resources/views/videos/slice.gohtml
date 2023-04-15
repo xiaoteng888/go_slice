@@ -1,0 +1,62 @@
+{{define "title"}}
+批量切片页面
+{{end}}
+
+{{define "main"}}
+<div class="col-md-9 blog-main">
+  <div class="blog-post bg-white p-5 rounded shadow mb-4">
+ 
+    <h3>切片上传S3</h3>
+    <div id="messages"></div>
+    <form action="{{RouteName2URL "videos.do-slice"}}" method="post" >
+
+      <button type="submit" class="btn btn-primary mt-3">开始切片</button>
+
+    </form>
+
+  </div>
+</div>
+
+{{end}}
+
+{{define "jscss"}}
+<script>
+
+      // 创建 WebSocket 连接
+      const socket = new WebSocket('ws://127.0.0.1:3000/video/slice');
+
+      // 监听连接事件
+      socket.addEventListener('open', event => {
+        console.log('WebSocket 已连接');
+      });
+
+      // 监听消息事件
+      socket.addEventListener('message', event => {
+        console.log('收到服务器消息：', event.data);
+        const messages = document.getElementById('messages');
+        const p = document.createElement('p');
+        p.textContent = event.data;
+        messages.appendChild(p);
+      });
+
+      // 监听错误事件
+      socket.addEventListener('error', event => {
+        console.log('WebSocket 错误：', event);
+      });
+
+      // 监听关闭事件
+      socket.addEventListener('close', event => {
+        console.log('WebSocket 已关闭');
+      });
+
+      // 发送消息
+      {{/* const form = document.querySelector('form');
+      const input = document.getElementById('input');
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const message = input.value;
+        socket.send(message);
+        input.value = '';
+      }); */}}
+</script>
+{{end}}

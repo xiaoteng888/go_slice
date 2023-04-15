@@ -34,6 +34,8 @@ func main() {
 
 	// 初始化路由绑定
 	router := bootstrap.SetupRoute(staticFS)
+	// 定时任务
+	bootstrap.SetupCron()
 
 	err := http.ListenAndServe(":"+c.GetString("app.port"), middlewares.RemoveTrailingSlash(router))
 	logger.LogError(err)

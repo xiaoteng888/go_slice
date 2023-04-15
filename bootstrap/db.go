@@ -1,10 +1,7 @@
 package bootstrap
 
 import (
-	"goblog/app/models/article"
-	"goblog/app/models/category"
 	"goblog/app/models/user"
-	"goblog/app/models/video"
 	"goblog/pkg/config"
 	"goblog/pkg/model"
 	"time"
@@ -37,8 +34,8 @@ func migration(db *gorm.DB) {
 	// 自动迁移
 	db.AutoMigrate(
 		&user.User{},
-		&article.Article{},
-		&category.Category{},
-		&video.Video{},
+		//&article.Article{},
+		//&category.Category{},
+		//&video.Video{},
 	)
 }

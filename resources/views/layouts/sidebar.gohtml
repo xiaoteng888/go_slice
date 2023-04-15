@@ -32,6 +32,7 @@
       
       {{ if .isLogined }}
         <li><a href="{{ RouteName2URL "videos.create" }}">上传视频</a></li>
+        <li><a href="{{ RouteName2URL "videos.slice" }}">去切片</a></li>
         <li class="mt-3">
           <form action="{{ RouteName2URL "auth.logout" }}" method="POST" onsubmit="return confirm('您确定要退出吗？');">
             <button class="btn btn-block btn-outline-danger btn-sm" type="submit" name="button">退出</button>

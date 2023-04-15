@@ -22,7 +22,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/cheggaaa/pb"
 	"github.com/gogf/gf/util/gconv"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 func SaveUploadVideo(r *http.Request, file *multipart.FileHeader, uploadfile multipart.File) (string, error) {
 	var video string
@@ -58,10 +64,11 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 定义输入视频文件名、输出目录名和切片长度
 	//inputVideo := "./storage/" + name + ".mp4"
 	start := strings.LastIndex(inputVideo, "/") + 1
-	end := strings.Index(inputVideo, ".mp4")
+	end := strings.Index(inputVideo, ".")
 	name := inputVideo[start:end]
+	fmt.Print(name)
 	outputDir := "./storage/movie/" + name
-	segmentLength := 90 //时长秒
+	segmentLength := 15 //时长秒
 	// 检查原始视频文件是否存在
 	url := "." + inputVideo
 	fmt.Print(url)
@@ -88,7 +95,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	duration := string(output)
 	fmt.Printf("视频时长为：%s", duration)
-	_video.Length = duration
+	_video.MovieLength = duration
 
 	// 切片视频
 	fmt.Println("开始切片视频...")
@@ -103,7 +110,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		return err
 	}
 	fmt.Println("切片完成！")
-	_video.Status = video.STATUS_SUCCESS
+	_video.SliceStatus = video.STATUS_SUCCESS
 	// 删除原始文件
 	os.Remove(url)
 
@@ -116,6 +123,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		return err
 	}
 	fmt.Println("切片文件列表：")
+	dirName := path.Base(outputDir)
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -123,7 +131,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		// 获取文件扩展名
 		ext := filepath.Ext(file.Name())
 		if ext == ".m3u8" {
-			dirName := path.Base(outputDir)
+
 			_video.Url = "/xj/" + dirName + "/" + file.Name()
 			_video.Update()
 		}
@@ -133,14 +141,51 @@ func Slice(inputVideo string, _video video.Video) error {
 
 	// 显示进度条
 	bar := pb.StartNew(len(files))
-	for i := 0; i < len(files); i++ {
-		// 模拟处理每个切片文件
-		bar.Increment()
+	bucket := "pianpian"
+	if pkgs3.S3Client == nil {
+		fmt.Print("初始化 S3 客户端----------")
+		// 初始化 S3 客户端
+		pkgs3.InitS3()
 	}
-	bar.Finish()
 
-	err = UptoS3(outputDir)
-	return err
+	// conn, err := upgrader.Upgrade(w, r, w.Header())
+	// if err != nil {
+	// 	return err
+	// }
+	//defer conn.Close()
+	for i, info := range files {
+		// 模拟处理每个切片文件
+		//bar.Increment()
+		progress := float64(i+1) / float64(len(files)) * 100
+		fmt.Print("进度", progress, "\n")
+		// 上传文件到 S3
+		key := path.Join("xj", dirName, info.Name())
+		data, err := os.Open(outputDir + "/" + info.Name())
+		//data, err := ioutil.ReadFile(info.Name())
+		if err != nil {
+			return err
+
+		}
+		defer data.Close()
+		_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+			Bucket: &bucket,
+			Key:    &key,
+			Body:   data, //bytes.NewReader(data),
+		})
+		if err != nil {
+			return err
+
+		}
+		fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, info.Name(), bucket, key)
+		// 计算进度百分比并发送消息
+
+		fmt.Printf("进度%.2f\n", progress)
+	}
+
+	bar.Finish()
+	return nil
+	//err = UptoS3(outputDir)
+	//return err
 }
 
 // UptoS3 上传到上亚马逊s3

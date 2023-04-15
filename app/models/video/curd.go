@@ -7,7 +7,7 @@ import (
 
 // Create 创建文章，通过 article.ID 来判断是否创建成功
 func (video *Video) Create() (err error) {
-	if err = model.DB.Create(&video).Error; err != nil {
+	if err = model.DB.Table(TableName).Create(&video).Error; err != nil {
 		logger.LogError(err)
 		return err
 	}
@@ -17,10 +17,21 @@ func (video *Video) Create() (err error) {
 
 // 修改视频
 func (video *Video) Update() (rowsAffected int64, err error) {
-	result := model.DB.Table("videos").Save(&video)
+	result := model.DB.Table(TableName).Save(&video)
 	if err := result.Error; err != nil {
 		logger.LogError(err)
 		return 0, err
 	}
 	return result.RowsAffected, nil
+}
+
+// 获取未切片视频
+func GetMp4() ([]Video, error) {
+	var videos []Video
+	result := model.DB.Table(TableName).Where("slice_status = ?", STATUS_INVALID).Find(&videos)
+	if err := result.Error; err != nil {
+		logger.LogError(err)
+		return videos, err
+	}
+	return videos, nil
 }

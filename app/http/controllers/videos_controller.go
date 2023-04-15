@@ -9,8 +9,8 @@ import (
 	"goblog/pkg/route"
 	"goblog/pkg/view"
 	"net/http"
-	"sync"
-	"time"
+	"os"
+	"path/filepath"
 
 	"github.com/gogf/gf/util/gconv"
 )
@@ -42,7 +42,7 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 	//currentUser := auth.User()
 	fmt.Print("----------1")
 	_video := video.Video{
-		Name:         r.PostFormValue("name"),
+		VideoName:    r.PostFormValue("name"),
 		Description:  r.PostFormValue("description"),
 		Country:      gconv.Int64(r.PostFormValue("country")),
 		VideoType:    gconv.Int64(r.PostFormValue("video_type")),
@@ -84,19 +84,17 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 			view.Render(w, data, "videos.create", "videos._form_field")
 			return
 		}
+		_video.UpUrl = video
+		_video.Update()
 		fmt.Print("----------7")
 		//上传成功，开始切片
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			// 将视频文件进行切片
-			defer wg.Done()
-			if err := files.Slice(video, _video); err != nil {
-				logger.LogError(err)
-			}
-		}()
-		time.Sleep(1 * time.Second) // 等待1秒钟，确保goroutine有足够的时间来执行
-		wg.Wait()
+		// go func() {
+		// 	// 将视频文件进行切片
+		// 	if err := files.Slice(video, _video); err != nil {
+		// 		logger.LogError(err)
+		// 	}
+		// }()
+
 		fmt.Print("----------8")
 		indexURL := route.Name2URL("videos.create")
 		http.Redirect(w, r, indexURL+"?n=1", http.StatusFound)
@@ -106,5 +104,69 @@ func (*VideosController) Store(w http.ResponseWriter, r *http.Request) {
 			"Video":  _video,
 			"Errors": errors,
 		}, "videos.create", "videos._form_field")
+	}
+}
+
+// Slice视频切片页面
+func (*VideosController) Slice(w http.ResponseWriter, r *http.Request) {
+	view.Render(w, view.D{}, "videos.slice")
+}
+
+// DoSlice 执行视频切片操作
+func (*VideosController) DoSlice() {
+	// 把文件夹里的视频创建到表里
+	PathToMysql()
+	// 获取未切片的视频
+	videos, err := video.GetMp4()
+
+	if err != nil {
+		logger.LogError(err)
+		//w.WriteHeader(http.StatusInternalServerError)
+		fmt.Print("500 服务器内部错误")
+	} else {
+		if len(videos) == 0 {
+			fmt.Print("暂无视频可切片")
+			return
+		}
+
+		for _, _video := range videos {
+			if _video.UpUrl == "" {
+				fmt.Print("视频不存在 \n")
+				return
+			}
+			// 将视频文件进行切片
+			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
+			err := files.Slice(_video.UpUrl, _video)
+
+			if err != nil {
+				logger.LogError(err)
+				fmt.Print("切片报错", err, "\n")
+			} else {
+				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
+			}
+		}
+	}
+
+}
+
+// 循环处理文件路径
+func PathToMysql() {
+	root := "public/uploads/movies"
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			fmt.Println(path)
+			_video := video.Video{
+				UpUrl:     "/" + filepath.ToSlash(path),
+				VideoName: "需修改名称",
+			}
+			_video.Update()
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println(err)
 	}
 }
