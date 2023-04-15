@@ -14,7 +14,7 @@ func SetupCron() {
 
 	c := cronV3.New(cronV3.WithSeconds()) //精确到秒
 	vc := new(controllers.VideosController)
-	go c.AddFunc("@every 10s", func() {
+	go c.AddFunc("@every 300s", func() {
 		defer func() {
 			if err := recover(); err != nil {
 				logger.LogError(err.(error)) // 记录
