@@ -8,6 +8,7 @@ import (
 	"goblog/pkg/logger"
 	"goblog/pkg/route"
 	"goblog/pkg/view"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -152,18 +153,45 @@ func (*VideosController) DoSlice() {
 // 循环处理文件路径
 func PathToMysql() {
 	root := "public/uploads/movies"
+	uproot := "public/uploads/upmovies"
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() {
-			fmt.Println(path)
+			// 先把视频转移，再存入数据库
+			rootFile, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+
+			uprootFile := filepath.Join(uproot, info.Name())
+			targetFile, err := os.Create(uprootFile)
+			if err != nil {
+				return err
+			}
+			defer targetFile.Close()
+
+			_, err = io.Copy(targetFile, rootFile)
+			if err != nil {
+				return err
+			}
+			rootFile.Close()
+			// 删除原路径视频
+			fmt.Println("原路径视频：", path)
+			err = os.Remove(path)
+			if err != nil {
+				fmt.Print(err)
+				return err
+			}
+			fmt.Println(uprootFile)
 			_video := video.Video{
-				UpUrl:     "/" + filepath.ToSlash(path),
+				UpUrl:     "/" + filepath.ToSlash(uprootFile),
 				VideoName: "需修改名称",
 			}
 			_video.Update()
 		}
+
 		return nil
 	})
 	if err != nil {

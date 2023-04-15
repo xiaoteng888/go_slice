@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/cheggaaa/pb"
 	"github.com/gogf/gf/util/gconv"
 	"github.com/gorilla/websocket"
 )
@@ -112,7 +111,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	fmt.Println("切片完成！")
 	_video.SliceStatus = video.STATUS_SUCCESS
 	// 删除原始文件
-	os.Remove(url)
+	//os.Remove(url)
 
 	// 显示切片文件信息
 	files, err := os.ReadDir(outputDir)
@@ -140,10 +139,10 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 
 	// 显示进度条
-	bar := pb.StartNew(len(files))
+	//bar := pb.StartNew(len(files))
 	bucket := "pianpian"
 	if pkgs3.S3Client == nil {
-		fmt.Print("初始化 S3 客户端----------")
+		fmt.Print("初始化 S3 客户端----------\n")
 		// 初始化 S3 客户端
 		pkgs3.InitS3()
 	}
@@ -157,7 +156,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		// 模拟处理每个切片文件
 		//bar.Increment()
 		progress := float64(i+1) / float64(len(files)) * 100
-		fmt.Print("进度", progress, "\n")
+		//fmt.Print("进度", progress, "%", "\n")
 		// 上传文件到 S3
 		key := path.Join("xj", dirName, info.Name())
 		data, err := os.Open(outputDir + "/" + info.Name())
@@ -179,10 +178,10 @@ func Slice(inputVideo string, _video video.Video) error {
 		fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, info.Name(), bucket, key)
 		// 计算进度百分比并发送消息
 
-		fmt.Printf("进度%.2f\n", progress)
+		fmt.Printf("进度百分之：%.2f\n", progress)
 	}
 
-	bar.Finish()
+	//bar.Finish()
 	return nil
 	//err = UptoS3(outputDir)
 	//return err
