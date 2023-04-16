@@ -126,7 +126,7 @@ func (*VideosController) DoSlice() {
 		fmt.Print("500 服务器内部错误")
 	} else {
 		if len(videos) == 0 {
-			fmt.Print("暂无视频可切片")
+			fmt.Print("暂无视频可切片 \n")
 			return
 		}
 
@@ -187,7 +187,7 @@ func PathToMysql() {
 			fmt.Println(uprootFile)
 			_video := video.Video{
 				UpUrl:     "/" + filepath.ToSlash(uprootFile),
-				VideoName: "需修改名称",
+				VideoName: info.Name(),
 			}
 			_video.Update()
 		}
