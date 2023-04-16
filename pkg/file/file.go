@@ -111,7 +111,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	fmt.Println("切片完成！")
 	_video.SliceStatus = video.STATUS_SUCCESS
 	// 删除原始文件
-	os.Remove(url)
+	//os.Remove(url)
 
 	// 显示切片文件信息
 	files, err := os.ReadDir(outputDir)
