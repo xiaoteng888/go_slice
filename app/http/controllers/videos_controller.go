@@ -113,10 +113,14 @@ func (*VideosController) Slice(w http.ResponseWriter, r *http.Request) {
 	view.Render(w, view.D{}, "videos.slice")
 }
 
-// DoSlice 执行视频切片操作
-func (*VideosController) DoSlice() {
+func (*VideosController) SaveToMysql() {
 	// 把文件夹里的视频创建到表里
 	PathToMysql()
+}
+
+// DoSlice 执行视频切片操作
+func (*VideosController) DoSlice() {
+
 	// 获取未切片的视频
 	videos, err := video.GetMp4()
 
@@ -130,11 +134,17 @@ func (*VideosController) DoSlice() {
 			return
 		}
 
+		for _, v := range videos {
+			v.SliceStatus = 2
+			v.Update()
+		}
+
 		for _, _video := range videos {
 			if _video.UpUrl == "" {
 				fmt.Print("视频不存在 \n")
 				return
 			}
+
 			// 将视频文件进行切片
 			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
 			err := files.Slice(_video.UpUrl, _video)
