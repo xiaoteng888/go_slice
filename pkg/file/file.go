@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -94,7 +95,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	duration := string(output)
 	fmt.Printf("视频时长为：%s", duration)
-	_video.MovieLength = duration
+	sec, _ := strconv.ParseFloat(duration, 64)
+
+	_video.MovieLength = FormatDuration(sec)
 
 	// 切片视频
 	fmt.Println("开始切片视频...")
@@ -238,4 +241,12 @@ func UptoS3(dirPath string) error {
 
 	fmt.Println("所有文件上传成功")
 	return nil
+}
+
+// 将秒数转换为00：00：00
+func FormatDuration(duration float64) string {
+	hours := int(duration) / 3600
+	minutes := (int(duration) % 3600) / 60
+	seconds := int(duration) % 60
+	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
 }
