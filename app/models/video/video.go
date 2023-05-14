@@ -32,6 +32,8 @@ type Video struct {
 const (
 	STATUS_SUCCESS = 1
 	STATUS_INVALID = 0
+	STATUS_ON      = 2
+	STATUS_FAILED  = 3
 )
 
 var VideoTypes = map[string]string{

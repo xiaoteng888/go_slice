@@ -28,7 +28,7 @@ func (video *Video) Update() (rowsAffected int64, err error) {
 // 获取未切片视频
 func GetMp4() ([]Video, error) {
 	var videos []Video
-	result := model.DB.Table(TableName).Where("slice_status = ?", STATUS_INVALID).Find(&videos)
+	result := model.DB.Table(TableName).Where("slice_status IN ?", []int{STATUS_INVALID, STATUS_FAILED}).Find(&videos)
 	if err := result.Error; err != nil {
 		logger.LogError(err)
 		return videos, err

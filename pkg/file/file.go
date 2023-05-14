@@ -94,11 +94,10 @@ func Slice(inputVideo string, _video video.Video) error {
 		return err
 	}
 	duration := string(output)
-	fmt.Printf("视频时长为：%s", duration)
 	sec, _ := strconv.ParseFloat(duration, 64)
 
 	_video.MovieLength = FormatDuration(sec)
-
+	fmt.Printf("视频时长为：%s", _video.MovieLength)
 	// 切片视频
 	fmt.Println("开始切片视频...")
 	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
@@ -165,6 +164,8 @@ func Slice(inputVideo string, _video video.Video) error {
 		data, err := os.Open(outputDir + "/" + info.Name())
 		//data, err := ioutil.ReadFile(info.Name())
 		if err != nil {
+			_video.SliceStatus = video.STATUS_FAILED
+			_video.Update()
 			return err
 
 		}
@@ -175,6 +176,8 @@ func Slice(inputVideo string, _video video.Video) error {
 			Body:   data, //bytes.NewReader(data),
 		})
 		if err != nil {
+			_video.SliceStatus = video.STATUS_FAILED
+			_video.Update()
 			return err
 
 		}
