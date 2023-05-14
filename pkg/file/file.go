@@ -187,7 +187,8 @@ func Slice(inputVideo string, _video video.Video) error {
 		fmt.Printf("进度百分之：%.2f\n", progress)
 	}
 
-	//bar.Finish()
+	//上传成功删除视频
+	os.Remove(url)
 	return nil
 	//err = UptoS3(outputDir)
 	//return err
