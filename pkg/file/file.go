@@ -142,7 +142,7 @@ func Slice(inputVideo string, _video video.Video) error {
 
 	// 显示进度条
 	//bar := pb.StartNew(len(files))
-	bucket := "pianpian"
+	bucket := "yellowbook-media"
 	if pkgs3.S3Client == nil {
 		fmt.Print("初始化 S3 客户端----------\n")
 		// 初始化 S3 客户端
@@ -190,8 +190,6 @@ func Slice(inputVideo string, _video video.Video) error {
 	//上传成功删除视频
 	os.Remove(url)
 	return nil
-	//err = UptoS3(outputDir)
-	//return err
 }
 
 // UptoS3 上传到上亚马逊s3
@@ -202,7 +200,7 @@ func UptoS3(dirPath string) error {
 		// 初始化 S3 客户端
 		pkgs3.InitS3()
 	}
-	bucket := "pianpian"
+	bucket := "yellowbook-media"
 	// prefix := "xj/IMG_3987/"
 	// directory := "/storage/movie/IMG_3987/"
 	fmt.Print("output路径：", dirPath)

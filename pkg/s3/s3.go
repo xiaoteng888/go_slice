@@ -20,7 +20,7 @@ func Initialize() {
 func InitS3() {
 	// 使用您的 AWS access key 和 secret key 来创建 AWS 配置对象
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion("ap-southeast-1"),
+		config.WithRegion("ap-northeast-1"),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			gconv.String(pkgconfig.Env("AWS_ACCESS_KEY")),
 			gconv.String(pkgconfig.Env("AWS_SECRET_ACCESS_KEY")),
