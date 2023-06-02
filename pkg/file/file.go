@@ -64,7 +64,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 定义输入视频文件名、输出目录名和切片长度
 	//inputVideo := "./storage/" + name + ".mp4"
 	start := strings.LastIndex(inputVideo, "/") + 1
-	end := strings.Index(inputVideo, ".")
+	end := strings.Index(strings.ToLower(inputVideo), ".mp4")
 	name := inputVideo[start:end]
 	fmt.Print(name)
 	outputDir := "./storage/movie/" + name
