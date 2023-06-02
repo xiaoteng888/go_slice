@@ -29,7 +29,7 @@ func SetupCron() {
 	})
 
 	// 执行切片
-	go c.AddFunc("@every 3600s", func() {
+	go c.AddFunc("@every 600s", func() {
 		defer func() {
 			if err := recover(); err != nil {
 				logger.LogError(err.(error)) // 记录
