@@ -98,7 +98,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	duration := string(output)
 	sec, _ := strconv.ParseFloat(duration, 64)
-
+	fmt.Printf("视频秒数时长为：%f", sec)
 	_video.MovieLength = FormatDuration(sec)
 	fmt.Printf("视频时长为：%s", _video.MovieLength)
 	// 切片视频
