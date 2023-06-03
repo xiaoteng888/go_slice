@@ -65,6 +65,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	//inputVideo := "./storage/" + name + ".mp4"
 	start := strings.LastIndex(inputVideo, "/") + 1
 	end := strings.Index(strings.ToLower(inputVideo), ".mp4")
+	if end == -1 {
+		end = strings.Index(strings.ToLower(inputVideo), ".ts")
+	}
 	name := inputVideo[start:end]
 	fmt.Print(name)
 	outputDir := "./storage/movie/" + name
