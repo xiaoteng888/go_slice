@@ -119,7 +119,6 @@ func Slice(inputVideo string, _video video.Video) error {
 		return err
 	}
 	fmt.Println("切片完成！")
-	_video.SliceStatus = video.STATUS_SUCCESS
 	// 删除原始文件
 	//os.Remove(url)
 
@@ -194,7 +193,8 @@ func Slice(inputVideo string, _video video.Video) error {
 
 		fmt.Printf("进度百分之：%.2f\n", progress)
 	}
-
+	_video.SliceStatus = video.STATUS_SUCCESS
+	_video.Update()
 	//上传成功删除视频
 	os.Remove(url)
 	return nil
