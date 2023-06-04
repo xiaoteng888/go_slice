@@ -35,3 +35,14 @@ func GetMp4() ([]Video, error) {
 	}
 	return videos, nil
 }
+
+// 根据名称获取视频
+func Get(name string) (Video, error) {
+	var video Video
+	result := model.DB.Table(TableName).Where("video_name = ?", name).Find(&video)
+	if err := result.Error; err != nil {
+		logger.LogError(err)
+		return video, err
+	}
+	return video, nil
+}

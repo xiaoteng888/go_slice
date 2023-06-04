@@ -169,6 +169,13 @@ func PathToMysql() {
 			return err
 		}
 		if !info.IsDir() {
+			// 先查询数据库有无这个视频
+			_one, _ := video.Get(info.Name())
+			if _one.ID > 0 {
+				//查到就不执行
+				fmt.Println("上个扫描任务正在执行：不执行此次扫描")
+				return nil
+			}
 			// 先把视频转移，再存入数据库
 			rootFile, err := os.Open(path)
 			if err != nil {
