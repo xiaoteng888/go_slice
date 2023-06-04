@@ -97,10 +97,15 @@ func Slice(inputVideo string, _video video.Video) error {
 		return err
 	}
 	duration := string(output)
-	sec, _ := strconv.ParseFloat(duration, 64)
-	fmt.Printf("视频秒数时长为：%f", sec)
-	_video.MovieLength = FormatDuration(sec)
-	fmt.Printf("视频时长为：%s", _video.MovieLength)
+	formattedDuration, err := formatDuration(duration)
+	if err != nil {
+		fmt.Println("转换出错:", err)
+		return err
+	}
+
+	fmt.Println("格式化后的时长:", formattedDuration)
+
+	_video.MovieLength = formattedDuration
 	// 切片视频
 	fmt.Println("开始切片视频...")
 	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
@@ -249,9 +254,16 @@ func UptoS3(dirPath string) error {
 }
 
 // 将秒数转换为00：00：00
-func FormatDuration(duration float64) string {
-	hours := int(duration) / 3600
-	minutes := (int(duration) % 3600) / 60
-	seconds := int(duration) % 60
-	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds)
+func formatDuration(durationStr string) (string, error) {
+	duration, err := strconv.ParseFloat(strings.TrimSpace(durationStr), 64)
+	if err != nil {
+		return "", err
+	}
+
+	totalSeconds := int(duration)
+	hours := totalSeconds / 3600
+	minutes := (totalSeconds % 3600) / 60
+	seconds := totalSeconds % 60
+
+	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds), nil
 }
