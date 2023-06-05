@@ -176,7 +176,7 @@ func PathToMysql() {
 				fmt.Println("上个扫描任务正在执行：影片---", _one.VideoName, "---已经存在或者正在切片上传S3")
 				return nil
 			}
-			fmt.Print(111)
+
 			// 先把视频转移，再存入数据库
 			rootFile, err := os.Open(path)
 
@@ -192,13 +192,6 @@ func PathToMysql() {
 
 			defer targetFile.Close()
 
-			fmt.Println(uprootFile)
-			_video := video.Video{
-				UpUrl:     "/" + filepath.ToSlash(uprootFile),
-				VideoName: info.Name(),
-			}
-			_video.Update()
-
 			_, err = io.Copy(targetFile, rootFile)
 			if err != nil {
 				return err
@@ -212,6 +205,13 @@ func PathToMysql() {
 				fmt.Print(err)
 				return err
 			}
+
+			fmt.Println(uprootFile)
+			_video := video.Video{
+				UpUrl:     "/" + filepath.ToSlash(uprootFile),
+				VideoName: info.Name(),
+			}
+			_video.Update()
 		}
 
 		return nil
