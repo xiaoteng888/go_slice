@@ -1,6 +1,7 @@
 package video
 
 import (
+	"fmt"
 	"goblog/pkg/logger"
 	"goblog/pkg/model"
 )
@@ -44,5 +45,6 @@ func Get(name string) (Video, error) {
 		logger.LogError(err)
 		return video, err
 	}
+	fmt.Print(666)
 	return video, nil
 }
