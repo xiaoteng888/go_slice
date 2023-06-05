@@ -173,7 +173,7 @@ func PathToMysql() {
 			_one, _ := video.Get(info.Name())
 			if _one.ID > 0 {
 				//查到就不执行
-				fmt.Println("上个扫描任务正在执行：不执行此次扫描")
+				fmt.Println("上个扫描任务正在执行：影片---", _one.VideoName, "---已经存在或者正在切片上传S3")
 				return nil
 			}
 			// 先把视频转移，再存入数据库
