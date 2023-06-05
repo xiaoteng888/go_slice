@@ -191,8 +191,9 @@ func PathToMysql() {
 			}
 			fmt.Print(444)
 			defer targetFile.Close()
-			fmt.Print(555)
+			fmt.Println(555, targetFile, rootFile)
 			_, err = io.Copy(targetFile, rootFile)
+			fmt.Print("err:", err)
 			if err != nil {
 				return err
 			}
