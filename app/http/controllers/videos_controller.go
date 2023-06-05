@@ -192,6 +192,13 @@ func PathToMysql() {
 
 			defer targetFile.Close()
 
+			fmt.Println(uprootFile)
+			_video := video.Video{
+				UpUrl:     "/" + filepath.ToSlash(uprootFile),
+				VideoName: info.Name(),
+			}
+			_video.Update()
+
 			_, err = io.Copy(targetFile, rootFile)
 			if err != nil {
 				return err
@@ -205,12 +212,6 @@ func PathToMysql() {
 				fmt.Print(err)
 				return err
 			}
-			fmt.Println(uprootFile)
-			_video := video.Video{
-				UpUrl:     "/" + filepath.ToSlash(uprootFile),
-				VideoName: info.Name(),
-			}
-			_video.Update()
 		}
 
 		return nil
