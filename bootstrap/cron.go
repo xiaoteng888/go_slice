@@ -46,7 +46,11 @@ func SetupCron() {
 			}
 		}()
 		fmt.Println("\n定时任务-切片上传S3：每600秒执行一次", time.Now().Format("2006-01-02 15:04:05"))
+		// 获取互斥锁
+		mutex.Lock()
 		vc.DoSlice()
+		// 释放互斥锁
+		mutex.Unlock()
 	})
 	c.Start()
 

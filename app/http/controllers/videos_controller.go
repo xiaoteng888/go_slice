@@ -152,6 +152,7 @@ func (*VideosController) DoSlice() {
 			if err != nil {
 				logger.LogError(err)
 				fmt.Print("切片报错", err, "\n")
+				continue
 			} else {
 				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
 			}
