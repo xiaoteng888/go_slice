@@ -70,5 +70,6 @@ func SetupCron() {
 		mutex.Unlock()
 	})
 	c.Start()
-
+	// 程序运行保持不退出
+	select {}
 }
