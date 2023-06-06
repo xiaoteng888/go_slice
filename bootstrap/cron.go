@@ -52,6 +52,23 @@ func SetupCron() {
 		// 释放互斥锁
 		mutex.Unlock()
 	})
+
+	go c.AddFunc("0 20 * * *", func() {
+		defer func() {
+			if err := recover(); err != nil {
+				logger.LogError(err.(error)) // 记录
+
+				fmt.Printf("Recovered from panic: %v\n", err.(error))
+
+			}
+		}()
+		fmt.Println("\n定时任务-切片昨天切片中的视频：每天8点执行一次", time.Now().Format("2006-01-02 15:04:05"))
+		// 获取互斥锁
+		mutex.Lock()
+		vc.DoYestedaySlice()
+		// 释放互斥锁
+		mutex.Unlock()
+	})
 	c.Start()
 
 }

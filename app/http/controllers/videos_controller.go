@@ -221,3 +221,46 @@ func PathToMysql() {
 		fmt.Println(err)
 	}
 }
+
+// DoSlice 执行视频切片操作
+func (*VideosController) DoYestedaySlice() {
+
+	// 获取未切片的视频
+	videos, err := video.GetYestedayMp4()
+
+	if err != nil {
+		logger.LogError(err)
+		//w.WriteHeader(http.StatusInternalServerError)
+		fmt.Print("500 服务器内部错误")
+	} else {
+		if len(videos) == 0 {
+			fmt.Print("暂无视频可切片 \n")
+			return
+		}
+
+		for _, v := range videos {
+			v.SliceStatus = 2
+			v.Update()
+		}
+
+		for _, _video := range videos {
+			if _video.UpUrl == "" {
+				fmt.Print("视频不存在 \n")
+				return
+			}
+
+			// 将视频文件进行切片
+			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
+			err := files.Slice(_video.UpUrl, _video)
+
+			if err != nil {
+				logger.LogError(err)
+				fmt.Print("切片报错", err, "\n")
+				continue
+			} else {
+				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
+			}
+		}
+	}
+
+}
