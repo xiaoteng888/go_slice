@@ -2,6 +2,7 @@ package video
 
 import (
 	"fmt"
+	"goblog/pkg/config"
 	"goblog/pkg/logger"
 	"goblog/pkg/model"
 	"time"
@@ -30,7 +31,7 @@ func (video *Video) Update() (rowsAffected int64, err error) {
 // 获取未切片视频
 func GetMp4() ([]Video, error) {
 	var videos []Video
-	result := model.DB.Table(TableName).Where("slice_status IN ?", []int{STATUS_INVALID, STATUS_FAILED}).Find(&videos)
+	result := model.DB.Table(TableName).Where("win_no = ?", config.Env("WIN_NO", 0)).Where("slice_status IN ?", []int{STATUS_INVALID, STATUS_FAILED}).Find(&videos)
 	if err := result.Error; err != nil {
 		logger.LogError(err)
 		return videos, err
@@ -56,7 +57,7 @@ func GetYestedayMp4() ([]Video, error) {
 	// 获取昨天的起始时间和结束时间
 	yesterdayStart := time.Now().AddDate(0, 0, -7).Format("2006-01-02 00:00:00")
 	yesterdayEnd := time.Now().AddDate(0, 0, -1).Format("2006-01-02 23:59:59")
-	result := model.DB.Table(TableName).Where("slice_status = ? AND created_at BETWEEN ? AND ?", 2, yesterdayStart, yesterdayEnd).Find(&videos)
+	result := model.DB.Table(TableName).Where("win_no = ?", config.Env("WIN_NO", 0)).Where("slice_status = ? AND created_at BETWEEN ? AND ?", 2, yesterdayStart, yesterdayEnd).Find(&videos)
 	if err := result.Error; err != nil {
 		logger.LogError(err)
 		return videos, err

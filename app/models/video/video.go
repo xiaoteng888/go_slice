@@ -25,6 +25,7 @@ type Video struct {
 	PublishTime  string `gorm:"type:varchar(255);comment:发行时间;" valid:"publish_time"`
 	SliceStatus  int64  `gorm:"not null;default:0;index;comment:是否切片:1是,0否" valid:"slice_status"`
 	UpUrl        string `gorm:"type:varchar(255);not null" valid:"up_url"`
+	WinNo        int64  `gorm:"not null;default:1;index;comment:机器编号" valid:"win_no"`
 
 	UpVideo *multipart.FileHeader `gorm:"-" valid:"up_video" form:"up_video"`
 }

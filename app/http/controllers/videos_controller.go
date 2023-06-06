@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"goblog/app/models/video"
 	"goblog/app/requests"
+	"goblog/pkg/config"
 	files "goblog/pkg/file"
 	"goblog/pkg/logger"
 	"goblog/pkg/route"
@@ -211,6 +212,7 @@ func PathToMysql() {
 			_video := video.Video{
 				UpUrl:     "/" + filepath.ToSlash(uprootFile),
 				VideoName: info.Name(),
+				WinNo:     gconv.Int64(config.Env("WIN_NO", 0)),
 			}
 			_video.Update()
 		}
