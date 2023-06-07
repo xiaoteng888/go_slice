@@ -71,11 +71,21 @@ func Slice(inputVideo string, _video video.Video) error {
 	name := inputVideo[start:end]
 	fmt.Print(name)
 	outputDir := "./storage/movie/" + name
+	//检查输出目录是否存在
+	_, err := os.Stat(outputDir)
+	if err == nil {
+		err := os.RemoveAll(outputDir)
+		if err != nil {
+			fmt.Println("删除目录出错:", err)
+			return err
+		}
+	}
+
 	segmentLength := 15 //时长秒
 	// 检查原始视频文件是否存在
 	url := "." + inputVideo
 	fmt.Print(url)
-	_, err := os.Stat(url)
+	_, err = os.Stat(url)
 	if os.IsNotExist(err) {
 		fmt.Print("视频文件不存在", url)
 		return err
