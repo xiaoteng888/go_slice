@@ -111,6 +111,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
 	cmd = exec.Command("ffmpeg", "-i", url, "-codec", "copy", "-vbsf", "h264_mp4toannexb", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
 	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println(err)
@@ -197,6 +198,11 @@ func Slice(inputVideo string, _video video.Video) error {
 	_video.Update()
 	//上传成功删除视频
 	os.Remove(url)
+	err = os.RemoveAll(outputDir)
+	if err != nil {
+		fmt.Println("删除目录出错:", err)
+		return err
+	}
 	return nil
 }
 
