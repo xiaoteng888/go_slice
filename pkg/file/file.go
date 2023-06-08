@@ -74,7 +74,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	//检查输出目录是否存在
 	_, err := os.Stat(outputDir)
 	if err == nil {
-		err := os.RemoveAll(outputDir)
+		err := os.RemoveAll(filepath.Join(outputDir))
 		if err != nil {
 			fmt.Println("删除目录出错:", err)
 			return err
@@ -120,7 +120,8 @@ func Slice(inputVideo string, _video video.Video) error {
 	fmt.Println("开始切片视频...")
 	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
 	// cmd = exec.Command("ffmpeg", "-i", url, "-codec", "copy", "-vbsf", "h264_mp4toannexb", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
-	cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
+	//cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
+	cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -189,7 +190,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			return err
 
 		}
-		defer data.Close()
+
 		_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 			Bucket: &bucket,
 			Key:    &key,
@@ -202,18 +203,21 @@ func Slice(inputVideo string, _video video.Video) error {
 
 		}
 		fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, info.Name(), bucket, key)
+		data.Close()
 		// 计算进度百分比并发送消息
-
 		fmt.Printf("进度百分之：%.2f\n", progress)
 	}
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
 	//上传成功删除视频
 	os.Remove(url)
-	err = os.RemoveAll(outputDir)
-	if err != nil {
-		fmt.Println("删除目录出错:", err)
-		return err
+	_, err = os.Stat(outputDir)
+	if err == nil {
+		err = os.RemoveAll(filepath.Join(outputDir))
+		if err != nil {
+			fmt.Println("删除目录出错:", err)
+			return err
+		}
 	}
 	return nil
 }
