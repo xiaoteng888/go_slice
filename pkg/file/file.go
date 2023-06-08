@@ -120,7 +120,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	fmt.Println("开始切片视频...")
 	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
 	// cmd = exec.Command("ffmpeg", "-i", url, "-codec", "copy", "-vbsf", "h264_mp4toannexb", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
-	cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
+	cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
