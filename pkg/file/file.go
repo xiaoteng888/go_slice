@@ -7,9 +7,9 @@ import (
 	"goblog/app/models/video"
 	"goblog/pkg/app"
 	"goblog/pkg/helpers"
-	"goblog/pkg/logger"
 	pkgs3 "goblog/pkg/s3"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gogf/gf/util/gconv"
@@ -81,7 +82,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		}
 	}
 
-	segmentLength := 15 //时长秒
+	//segmentLength := 20 //时长秒
 	// 检查原始视频文件是否存在
 	url := "." + inputVideo
 	fmt.Print(url)
@@ -98,7 +99,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	// 获取视频时长
 	fmt.Println("获取视频时长...")
-	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffprobe
+
 	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", url)
 	output, err := cmd.Output()
 	if err != nil {
@@ -118,23 +119,25 @@ func Slice(inputVideo string, _video video.Video) error {
 	_video.MovieLength = formattedDuration
 	// 切片视频
 	fmt.Println("开始切片视频...")
-	//D:/ffmpeg/ffmpeg-master-latest-win64-gpl-shared/bin/ffmpeg
-	// cmd = exec.Command("ffmpeg", "-i", url, "-codec", "copy", "-vbsf", "h264_mp4toannexb", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
-	//cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
-	cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	// cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
+
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	// err = cmd.Run()
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	logger.LogError(err)
+	// 	os.Exit(1)
+	// 	return err
+	// }
+	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
+	err = sliceVideo(url, outputDir, seconds)
 	if err != nil {
-		fmt.Println(err)
-		logger.LogError(err)
-		os.Exit(1)
+		fmt.Println(err, gconv.Float64(output))
 		return err
 	}
 	fmt.Println("切片完成！")
-	// 删除原始文件
-	//os.Remove(url)
 
 	// 显示切片文件信息
 	files, err := os.ReadDir(outputDir)
@@ -169,43 +172,65 @@ func Slice(inputVideo string, _video video.Video) error {
 		// 初始化 S3 客户端
 		pkgs3.InitS3()
 	}
-
-	// conn, err := upgrader.Upgrade(w, r, w.Header())
-	// if err != nil {
-	// 	return err
-	// }
-	//defer conn.Close()
+	// 设置并发任务的最大数量
+	maxConcurrency := 3
+	var wg1 sync.WaitGroup
+	// 创建通道，用于控制并发任务的数量
+	concurrencyCh := make(chan struct{}, maxConcurrency)
+	errCh := make(chan error, len(files))
 	for i, info := range files {
-		// 模拟处理每个切片文件
-		//bar.Increment()
-		progress := float64(i+1) / float64(len(files)) * 100
-		//fmt.Print("进度", progress, "%", "\n")
-		// 上传文件到 S3
-		key := path.Join("xj", dirName, info.Name())
-		data, err := os.Open(outputDir + "/" + info.Name())
-		//data, err := ioutil.ReadFile(info.Name())
-		if err != nil {
-			_video.SliceStatus = video.STATUS_FAILED
-			_video.Update()
-			return err
+		wg1.Add(1)
+		_info := info
+		// 启动一个协程执行任务
+		go func(_info fs.DirEntry) {
 
-		}
+			defer wg1.Done()
 
-		_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
-			Bucket: &bucket,
-			Key:    &key,
-			Body:   data, //bytes.NewReader(data),
-		})
-		if err != nil {
-			_video.SliceStatus = video.STATUS_FAILED
-			_video.Update()
-			return err
+			// 控制并发任务的数量
+			concurrencyCh <- struct{}{}
+			defer func() { <-concurrencyCh }()
 
-		}
-		fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, info.Name(), bucket, key)
-		data.Close()
-		// 计算进度百分比并发送消息
-		fmt.Printf("进度百分之：%.2f\n", progress)
+			// 模拟处理每个切片文件
+			//bar.Increment()
+			progress := float64(i+1) / float64(len(files)) * 100
+			//fmt.Print("进度", progress, "%", "\n")
+			// 上传文件到 S3
+			key := path.Join("xj", dirName, _info.Name())
+			data, err := os.Open(outputDir + "/" + _info.Name())
+			//data, err := ioutil.ReadFile(info.Name())
+			if err != nil {
+				_video.SliceStatus = video.STATUS_FAILED
+				_video.Update()
+				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+
+			}
+
+			_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+				Bucket: &bucket,
+				Key:    &key,
+				Body:   data, //bytes.NewReader(data),
+			})
+			if err != nil {
+				_video.SliceStatus = video.STATUS_FAILED
+				_video.Update()
+				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+
+			}
+			fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, _info.Name(), bucket, key)
+			data.Close()
+			// 计算进度百分比并发送消息
+			fmt.Printf("进度百分之：%.2f\n", progress)
+		}(_info)
+	}
+	// 等待所有任务完成
+	go func() {
+		wg1.Wait()
+		close(errCh)
+	}()
+
+	// 检查错误通道，如果有错误则返回第一个错误
+	for err := range errCh {
+		return err
 	}
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
@@ -288,4 +313,71 @@ func formatDuration(durationStr string) (string, error) {
 	seconds := totalSeconds % 60
 
 	return fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds), nil
+}
+
+// 分段切片
+func sliceVideo(inputVideo, outputDir string, video_length float64) error {
+
+	segmentCount := 5 // 分段数量
+
+	// 设置并发任务的最大数量
+	maxConcurrency := 3
+
+	// 创建等待组，用于等待所有任务完成
+	var wg sync.WaitGroup
+
+	// 创建通道，用于控制并发任务的数量
+	concurrencyCh := make(chan struct{}, maxConcurrency)
+
+	// 计算每个分段的时长
+	durationPerSegment := video_length / gconv.Float64(segmentCount)
+
+	errCh := make(chan error, segmentCount)
+
+	// 并发切片任务
+	for i := 0; i < segmentCount; i++ {
+		wg.Add(1)
+
+		// 启动一个协程执行任务
+		go func(segmentIndex int) {
+			defer wg.Done()
+
+			// 控制并发任务的数量
+			concurrencyCh <- struct{}{}
+			defer func() { <-concurrencyCh }()
+
+			// 计算切片起始时间和结束时间
+			startTime := durationPerSegment * float64(segmentIndex)
+			endTime := startTime + durationPerSegment
+			// 执行切片命令
+			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c", "copy", "-f", "segment", "-segment_list", fmt.Sprintf("%s/playlist_%d.m3u8", outputDir, segmentIndex), fmt.Sprintf("%s/output_%d.ts", outputDir, segmentIndex))
+
+			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(20), outputDir+"/output_%03d.ts")
+
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err := cmd.Run()
+
+			if err != nil {
+				errCh <- fmt.Errorf("切片视频分段 %d 出错: %s", segmentIndex, err)
+				return
+			}
+
+			fmt.Printf("视频分段 %d 切片完成\n", segmentIndex)
+		}(i)
+	}
+
+	// 等待所有任务完成
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	// 检查错误通道，如果有错误则返回第一个错误
+	for err := range errCh {
+		return err
+	}
+
+	fmt.Println("所有切片任务已完成")
+	return nil
 }
