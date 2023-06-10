@@ -131,14 +131,20 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 	os.Exit(1)
 	// 	return err
 	// }
+	segmentCount := 5
 	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
-	err = sliceVideo(url, outputDir, seconds)
+	err = sliceVideo(url, outputDir, seconds, segmentCount)
 	if err != nil {
 		fmt.Println(err, gconv.Float64(output))
 		return err
 	}
 	fmt.Println("切片完成！")
-
+	// 组合m3u8文件
+	err = combinePlaylists(outputDir, segmentCount)
+	if err != nil {
+		fmt.Printf("组合 .m3u8 文件失败: %s\n", err)
+		return err
+	}
 	// 显示切片文件信息
 	files, err := os.ReadDir(outputDir)
 	if err != nil {
@@ -179,6 +185,8 @@ func Slice(inputVideo string, _video video.Video) error {
 	concurrencyCh := make(chan struct{}, maxConcurrency)
 	errCh := make(chan error, len(files))
 	for i, info := range files {
+		progress := float64(i+1) / float64(len(files)) * 100
+		//fmt.Print("进度", progress, "%", "\n")
 		wg1.Add(1)
 		_info := info
 		// 启动一个协程执行任务
@@ -192,8 +200,7 @@ func Slice(inputVideo string, _video video.Video) error {
 
 			// 模拟处理每个切片文件
 			//bar.Increment()
-			progress := float64(i+1) / float64(len(files)) * 100
-			//fmt.Print("进度", progress, "%", "\n")
+
 			// 上传文件到 S3
 			key := path.Join("xj", dirName, _info.Name())
 			data, err := os.Open(outputDir + "/" + _info.Name())
@@ -316,9 +323,9 @@ func formatDuration(durationStr string) (string, error) {
 }
 
 // 分段切片
-func sliceVideo(inputVideo, outputDir string, video_length float64) error {
+func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount int) error {
 
-	segmentCount := 5 // 分段数量
+	//segmentCount := 5 // 分段数量
 
 	// 设置并发任务的最大数量
 	maxConcurrency := 3
@@ -352,7 +359,7 @@ func sliceVideo(inputVideo, outputDir string, video_length float64) error {
 			// 执行切片命令
 			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c", "copy", "-f", "segment", "-segment_list", fmt.Sprintf("%s/playlist_%d.m3u8", outputDir, segmentIndex), fmt.Sprintf("%s/output_%d.ts", outputDir, segmentIndex))
 
-			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
+			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
 
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -379,5 +386,55 @@ func sliceVideo(inputVideo, outputDir string, video_length float64) error {
 	}
 
 	fmt.Println("所有切片任务已完成")
+	return nil
+}
+
+// 组合m3u8文件
+func combinePlaylists(outputDir string, segmentCount int) error {
+	combinedPlaylistPath := filepath.Join(outputDir, "playlist.m3u8")
+
+	// 创建一个新的 .m3u8 文件
+	combinedPlaylist, err := os.Create(combinedPlaylistPath)
+	if err != nil {
+		return fmt.Errorf("创建组合 .m3u8 文件失败: %s", err)
+	}
+	defer combinedPlaylist.Close()
+
+	// 写入组合 .m3u8 文件的头部信息
+	_, err = combinedPlaylist.WriteString("#EXTM3U\n#EXT-X-VERSION:3\n")
+	if err != nil {
+		return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
+	}
+
+	// 遍历每个切片文件并写入组合 .m3u8 文件
+	for i := 0; i < segmentCount; i++ {
+		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist%d.m3u8", i))
+
+		// 读取切片文件内容
+		playlistData, err := ioutil.ReadFile(playlistPath)
+		if err != nil {
+			return fmt.Errorf("读取切片 .m3u8 文件失败: %s", err)
+		}
+
+		// 写入切片文件内容到组合 .m3u8 文件
+		_, err = combinedPlaylist.Write(playlistData)
+		if err != nil {
+			return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
+		}
+
+		// 添加换行符
+		_, err = combinedPlaylist.WriteString("\n")
+		if err != nil {
+			return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
+		}
+	}
+
+	// 输出组合 .m3u8 文件路径
+	fmt.Printf("组合 .m3u8 文件路径：%s\n", combinedPlaylistPath)
+	// 合并成功删除多余m3u8文件
+	for i := 0; i < segmentCount; i++ {
+		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist%d.m3u8", i))
+		os.Remove(playlistPath)
+	}
 	return nil
 }
