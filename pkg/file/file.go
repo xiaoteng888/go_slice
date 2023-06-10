@@ -352,7 +352,7 @@ func sliceVideo(inputVideo, outputDir string, video_length float64) error {
 			// 执行切片命令
 			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c", "copy", "-f", "segment", "-segment_list", fmt.Sprintf("%s/playlist_%d.m3u8", outputDir, segmentIndex), fmt.Sprintf("%s/output_%d.ts", outputDir, segmentIndex))
 
-			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
+			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(20), outputDir+"/output_%03d.ts")
 
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
