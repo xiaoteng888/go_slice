@@ -131,7 +131,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 	os.Exit(1)
 	// 	return err
 	// }
-	segmentCount := 5
+	segmentCount := 6
 	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
 	err = sliceVideo(url, outputDir, seconds, segmentCount)
 	if err != nil {

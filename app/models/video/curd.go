@@ -57,7 +57,7 @@ func GetYestedayMp4() ([]Video, error) {
 	// 获取昨天的起始时间和结束时间
 	yesterdayStart := time.Now().AddDate(0, 0, -7).Format("2006-01-02 00:00:00")
 	yesterdayEnd := time.Now().AddDate(0, 0, -3).Format("2006-01-02 23:59:59")
-	result := model.DB.Table(TableName).Where("win_no = ?", config.Env("WIN_NO", 0)).Where("slice_status = ? AND created_at BETWEEN ? AND ?", 2, yesterdayStart, yesterdayEnd).Find(&videos)
+	result := model.DB.Table(TableName).Where("win_no = ?", config.Env("WIN_NO", 0)).Where("slice_status = ? AND updated_at BETWEEN ? AND ?", 2, yesterdayStart, yesterdayEnd).Find(&videos)
 	if err := result.Error; err != nil {
 		logger.LogError(err)
 		return videos, err
