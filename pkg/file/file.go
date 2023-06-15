@@ -188,8 +188,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 创建通道，用于控制并发任务的数量
 	concurrencyCh := make(chan struct{}, maxConcurrency)
 	errCh := make(chan error, len(files))
-	for i, info := range files {
-		progress := float64(i+1) / float64(len(files)) * 100
+	num := 0
+	for _, info := range files {
+		progress := float64(num+1) / float64(len(files)) * 100
 		//fmt.Print("进度", progress, "%", "\n")
 		wg1.Add(1)
 		_info := info
