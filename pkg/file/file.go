@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"goblog/app/models/video"
 	"goblog/pkg/app"
+	"goblog/pkg/config"
 	"goblog/pkg/helpers"
 	pkgs3 "goblog/pkg/s3"
 	"io"
@@ -133,6 +134,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	// }
 	segmentCount := 6
 	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
+	if seconds < 20 {
+		segmentCount = 1
+	}
 	err = sliceVideo(url, outputDir, seconds, segmentCount)
 	if err != nil {
 		fmt.Println(err, gconv.Float64(output))
@@ -326,7 +330,21 @@ func formatDuration(durationStr string) (string, error) {
 func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount int) error {
 
 	//segmentCount := 5 // 分段数量
-
+	waterpng := "./public/" + gconv.String(config.Env("IMG_NAME"))
+	overlaystr := gconv.String(config.Env("OVER_LAY"))
+	var overlay string
+	switch {
+	case overlaystr == "右上角":
+		overlay = "overlay=W-w-10:10"
+	case overlaystr == "右下角":
+		overlay = "overlay=W-w-10:H-h-10"
+	case overlaystr == "左上角":
+		overlay = "overlay=10:10"
+	case overlaystr == "左下角":
+		overlay = "overlay=W-w-10:H-h-10"
+	default:
+		overlay = "overlay=10:10"
+	}
 	// 设置并发任务的最大数量
 	maxConcurrency := 3
 
@@ -357,9 +375,11 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 			startTime := durationPerSegment * float64(segmentIndex)
 			endTime := startTime + durationPerSegment
 			// 执行切片命令
-			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c", "copy", "-f", "segment", "-segment_list", fmt.Sprintf("%s/playlist_%d.m3u8", outputDir, segmentIndex), fmt.Sprintf("%s/output_%d.ts", outputDir, segmentIndex))
 
-			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
+			fmt.Print(overlay)
+			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay, "-map", "0", "-map", "1", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
+
+			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay, "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
 
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
