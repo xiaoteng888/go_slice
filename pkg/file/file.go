@@ -360,7 +360,7 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 	case overlaystr == "右下角":
 		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	case overlaystr == "左上角":
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=10:10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/1:h=-1[wm];[0][wm]overlay=10:10"
 	case overlaystr == "左下角":
 		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	default:
@@ -445,10 +445,10 @@ func combinePlaylists(outputDir string, segmentCount int, resolution string) err
 	defer combinedPlaylist.Close()
 
 	// 写入组合 .m3u8 文件的头部信息
-	_, err = combinedPlaylist.WriteString("#EXTM3U\n#EXT-X-VERSION:3\n")
-	if err != nil {
-		return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
-	}
+	//_, err = combinedPlaylist.WriteString("#EXTM3U\n#EXT-X-VERSION:3\n")
+	// if err != nil {
+	// 	return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
+	// }
 
 	// 遍历每个切片文件并写入组合 .m3u8 文件
 	for i := 0; i < segmentCount; i++ {
@@ -459,9 +459,24 @@ func combinePlaylists(outputDir string, segmentCount int, resolution string) err
 		if err != nil {
 			return fmt.Errorf("读取切片 .m3u8 文件失败: %s", err)
 		}
+		var cleanedLines []string
+		lines := strings.Split(string(playlistData), "\n")
+		// 删除多余的标签行
+
+		for _, line := range lines {
+			if i != 0 {
+				if !strings.HasPrefix(line, "#EXTM3U") &&
+					!strings.HasPrefix(line, "#EXT-X-VERSION:3") &&
+					!strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:0") {
+					cleanedLines = append(cleanedLines, line)
+				}
+			} else {
+				cleanedLines = append(cleanedLines, line)
+			}
+		}
 
 		// 写入切片文件内容到组合 .m3u8 文件
-		_, err = combinedPlaylist.Write(playlistData)
+		_, err = combinedPlaylist.WriteString(strings.Join(cleanedLines, "\n"))
 		if err != nil {
 			return fmt.Errorf("写入组合 .m3u8 文件失败: %s", err)
 		}
