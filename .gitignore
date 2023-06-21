@@ -1,4 +1,6 @@
 tmp
 .env
 start.sh
-storage/
+storage/*
+!storage/movie
+storage/movie/*

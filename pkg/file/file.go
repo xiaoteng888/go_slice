@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"io/ioutil"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -27,6 +28,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var resolutions = []string{"854:480", "1280:720", "640:360"}
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -69,6 +71,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	end := strings.Index(strings.ToLower(inputVideo), ".mp4")
 	if end == -1 {
 		end = strings.Index(strings.ToLower(inputVideo), ".ts")
+		if end == -1 {
+			end = strings.Index(strings.ToLower(inputVideo), ".mkv")
+		}
 	}
 	name := inputVideo[start:end]
 	fmt.Print(name)
@@ -134,19 +139,34 @@ func Slice(inputVideo string, _video video.Video) error {
 	// }
 	segmentCount := 6
 	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
-	if seconds < 20 {
-		segmentCount = 1
+	if seconds < 120 {
+		segmentCount = int(math.Ceil(seconds / 20))
 	}
-	err = sliceVideo(url, outputDir, seconds, segmentCount)
+	// 首先，将完整的 SRT 字幕文件拆分为对应的 6 段字幕文件
+	subtitleFile := "./public/srt/" + name + ".srt"
+	// 拆分字幕文件
+	err = splitSubtitleFile(subtitleFile, segmentCount, name)
 	if err != nil {
-		fmt.Println(err, gconv.Float64(output))
+		// 处理错误
 		return err
 	}
-	fmt.Println("切片完成！")
-	// 组合m3u8文件
-	err = combinePlaylists(outputDir, segmentCount)
+	for _, resolution := range resolutions {
+		err = sliceVideo(url, outputDir, seconds, segmentCount, resolution, name)
+		if err != nil {
+			fmt.Println(err, gconv.Float64(output))
+			return err
+		}
+		fmt.Println("切片完成！")
+		// 组合m3u8文件
+		err = combinePlaylists(outputDir, segmentCount, resolution)
+		if err != nil {
+			fmt.Printf("组合 .m3u8 文件失败: %s\n", err)
+			return err
+		}
+	}
+	err = createMasterM3U8(outputDir)
 	if err != nil {
-		fmt.Printf("组合 .m3u8 文件失败: %s\n", err)
+		fmt.Print("写入主 M3U8 文件失败")
 		return err
 	}
 	// 显示切片文件信息
@@ -167,7 +187,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		ext := filepath.Ext(file.Name())
 		if ext == ".m3u8" {
 
-			_video.Url = "/xj/" + dirName + "/" + file.Name()
+			_video.Url = "/xj/" + dirName + "/" + "playlist.m3u8"
 			_video.Update()
 		}
 
@@ -188,9 +208,9 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 创建通道，用于控制并发任务的数量
 	concurrencyCh := make(chan struct{}, maxConcurrency)
 	errCh := make(chan error, len(files))
-	num := 0
-	for _, info := range files {
-		progress := float64(num+1) / float64(len(files)) * 100
+
+	for i, info := range files {
+		progress := float64(i+1) / float64(len(files)) * 100
 		//fmt.Print("进度", progress, "%", "\n")
 		wg1.Add(1)
 		_info := info
@@ -230,9 +250,10 @@ func Slice(inputVideo string, _video video.Video) error {
 			}
 			fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, _info.Name(), bucket, key)
 			data.Close()
-			// 计算进度百分比并发送消息
-			fmt.Printf("进度百分之：%.2f\n", progress)
+
 		}(_info)
+		// 计算进度百分比并发送消息
+		fmt.Printf("进度百分之：%.2f\n", progress)
 	}
 	// 等待所有任务完成
 	go func() {
@@ -328,24 +349,24 @@ func formatDuration(durationStr string) (string, error) {
 }
 
 // 分段切片
-func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount int) error {
-
+func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount int, resolution string, name string) error {
 	//segmentCount := 5 // 分段数量
 	waterpng := "./public/" + gconv.String(config.Env("IMG_NAME"))
 	overlaystr := gconv.String(config.Env("OVER_LAY"))
 	var overlay string
 	switch {
 	case overlaystr == "右上角":
-		overlay = "overlay=W-w-10:10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:10"
 	case overlaystr == "右下角":
-		overlay = "overlay=W-w-10:H-h-10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	case overlaystr == "左上角":
-		overlay = "overlay=10:10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=10:10"
 	case overlaystr == "左下角":
-		overlay = "overlay=W-w-10:H-h-10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	default:
-		overlay = "overlay=10:10"
+		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=10:10"
 	}
+
 	// 设置并发任务的最大数量
 	maxConcurrency := 3
 
@@ -375,12 +396,12 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 			// 计算切片起始时间和结束时间
 			startTime := durationPerSegment * float64(segmentIndex)
 			endTime := startTime + durationPerSegment
+			// 将冒号替换为下划线，以生成合法的文件名
+			resolutionFilename := strings.ReplaceAll(resolution, ":", "_")
 			// 执行切片命令
-
 			fmt.Print(overlay)
-			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay, "-map", "0", "-map", "1", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
-
-			//cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay, "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+gconv.String(segmentIndex)+"%03d.ts")
+			subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment_%d.srt", name, segmentIndex)
+			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+"_"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+gconv.String(segmentIndex)+"%03d.ts")
 
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -411,8 +432,10 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 }
 
 // 组合m3u8文件
-func combinePlaylists(outputDir string, segmentCount int) error {
-	combinedPlaylistPath := filepath.Join(outputDir, "playlist.m3u8")
+func combinePlaylists(outputDir string, segmentCount int, resolution string) error {
+	// 将冒号替换为下划线，以生成合法的文件名
+	resolutionFilename := strings.ReplaceAll(resolution, ":", "_")
+	combinedPlaylistPath := filepath.Join(outputDir, "playlist_"+resolutionFilename+".m3u8")
 
 	// 创建一个新的 .m3u8 文件
 	combinedPlaylist, err := os.Create(combinedPlaylistPath)
@@ -429,7 +452,7 @@ func combinePlaylists(outputDir string, segmentCount int) error {
 
 	// 遍历每个切片文件并写入组合 .m3u8 文件
 	for i := 0; i < segmentCount; i++ {
-		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist%d.m3u8", i))
+		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist_%s_%d.m3u8", resolutionFilename, i))
 
 		// 读取切片文件内容
 		playlistData, err := ioutil.ReadFile(playlistPath)
@@ -454,8 +477,77 @@ func combinePlaylists(outputDir string, segmentCount int) error {
 	fmt.Printf("组合 .m3u8 文件路径：%s\n", combinedPlaylistPath)
 	// 合并成功删除多余m3u8文件
 	for i := 0; i < segmentCount; i++ {
-		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist%d.m3u8", i))
+		playlistPath := filepath.Join(outputDir, fmt.Sprintf("playlist_%s_%d.m3u8", resolutionFilename, i))
 		os.Remove(playlistPath)
+	}
+	return nil
+}
+
+// 主 M3U8 文件
+func createMasterM3U8(outputDir string) error {
+	// 创建主 M3U8 文件
+	masterM3U8 := "#EXTM3U\n#EXT-X-VERSION:3\n"
+	for _, resolution := range resolutions {
+
+		// 将冒号替换为下划线，以生成合法的文件名
+		resolutionFilename := strings.ReplaceAll(resolution, ":", "_")
+
+		// 将 M3U8 文件内容添加到主 M3U8 文件中
+		masterM3U8 += fmt.Sprintf("#EXT-X-STREAM-INF:BANDWIDTH=playlist,RESOLUTION=%s\n", resolutionFilename)
+		masterM3U8 += fmt.Sprintf("playlist_%s.m3u8 \n", resolutionFilename)
+	}
+	// 写入主 M3U8 文件
+	masterFilePath := filepath.Join(outputDir, "playlist.m3u8")
+	err := ioutil.WriteFile(masterFilePath, []byte(masterM3U8), 0644)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("主 M3U8 文件创建成功")
+	return nil
+}
+
+func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) error {
+	// 读取完整的字幕文件
+	subtitleData, err := ioutil.ReadFile(fullSubtitleFile)
+	if err != nil {
+		return err
+	}
+
+	// 将字幕数据按照段落分割
+	paragraphs := strings.Split(string(subtitleData), "\n\n")
+
+	// 计算每段的段落数量
+	paragraphsPerSegment := len(paragraphs) / segmentCount
+	// 遍历每个段落，生成相应的字幕文件
+	for i := 0; i < segmentCount; i++ {
+		// 确定当前段落的起始索引和结束索引
+		startIndex := i * paragraphsPerSegment
+		endIndex := (i + 1) * paragraphsPerSegment
+
+		// 如果是最后一段，确保结束索引为最后一个段落
+		if i == segmentCount-1 {
+			endIndex = len(paragraphs)
+		}
+
+		// 生成当前段落的字幕内容
+		segmentSubtitle := strings.Join(paragraphs[startIndex:endIndex], "\n\n")
+		// 将当前段落的字幕内容写入文件
+		out_srt := "./storage/" + name
+		err = os.MkdirAll(out_srt, 0755)
+		if err != nil {
+			//logger.LogError(err)
+			return err
+		}
+		filename := fmt.Sprintf("subtitle_segment_%d.srt", i)
+		masterFilePath := filepath.Join(out_srt, filename)
+		err := ioutil.WriteFile(masterFilePath, []byte(segmentSubtitle), 0644)
+		if err != nil {
+			fmt.Printf("字幕段写入失败 %d:", i+1)
+			return err
+		}
+
+		fmt.Println("生成的字幕片段:", filename)
 	}
 	return nil
 }
