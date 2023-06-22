@@ -25,14 +25,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gogf/gf/util/gconv"
-	"github.com/gorilla/websocket"
 )
 
 var resolutions = []string{"854:480", "1280:720", "640:360"}
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
 
 func SaveUploadVideo(r *http.Request, file *multipart.FileHeader, uploadfile multipart.File) (string, error) {
 	var video string
@@ -384,7 +379,7 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 	// 并发切片任务
 	for i := 0; i < segmentCount; i++ {
 		wg.Add(1)
-
+		fmt.Print("-------------", i)
 		// 启动一个协程执行任务
 		go func(segmentIndex int) {
 			defer wg.Done()
@@ -464,14 +459,28 @@ func combinePlaylists(outputDir string, segmentCount int, resolution string) err
 		// 删除多余的标签行
 
 		for _, line := range lines {
-			if i != 0 {
+			if i != 0 && i != segmentCount-1 {
 				if !strings.HasPrefix(line, "#EXTM3U") &&
 					!strings.HasPrefix(line, "#EXT-X-VERSION:3") &&
-					!strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:0") {
+					!strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:") &&
+					!strings.HasPrefix(line, "#EXT-X-ALLOW-CACHE:YES") &&
+					!strings.HasPrefix(line, "#EXT-X-TARGETDURATION:") &&
+					!strings.HasPrefix(line, "#EXT-X-ENDLIST") {
 					cleanedLines = append(cleanedLines, line)
 				}
+			} else if i != segmentCount-1 {
+				if !strings.HasPrefix(line, "#EXT-X-ENDLIST") {
+					cleanedLines = append(cleanedLines, line)
+				}
+
 			} else {
-				cleanedLines = append(cleanedLines, line)
+				if !strings.HasPrefix(line, "#EXTM3U") &&
+					!strings.HasPrefix(line, "#EXT-X-VERSION:3") &&
+					!strings.HasPrefix(line, "#EXT-X-MEDIA-SEQUENCE:") &&
+					!strings.HasPrefix(line, "#EXT-X-ALLOW-CACHE:YES") &&
+					!strings.HasPrefix(line, "#EXT-X-TARGETDURATION:") {
+					cleanedLines = append(cleanedLines, line)
+				}
 			}
 		}
 
@@ -530,7 +539,7 @@ func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) e
 	}
 
 	// 将字幕数据按照段落分割
-	paragraphs := strings.Split(string(subtitleData), "\n\n")
+	paragraphs := strings.Split(string(subtitleData), "\n")
 
 	// 计算每段的段落数量
 	paragraphsPerSegment := len(paragraphs) / segmentCount
@@ -546,7 +555,7 @@ func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) e
 		}
 
 		// 生成当前段落的字幕内容
-		segmentSubtitle := strings.Join(paragraphs[startIndex:endIndex], "\n\n")
+		segmentSubtitle := strings.Join(paragraphs[startIndex:endIndex], "")
 		// 将当前段落的字幕内容写入文件
 		out_srt := "./storage/" + name
 		err = os.MkdirAll(out_srt, 0755)
@@ -566,3 +575,57 @@ func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) e
 	}
 	return nil
 }
+
+// func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) error {
+// 	// 读取完整的字幕文件
+// 	subtitleData, err := ioutil.ReadFile(fullSubtitleFile)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	// 将字幕数据按照段落分割
+// 	paragraphs := strings.Split(string(subtitleData), "\n")
+// 	// 计算每段的段落数量
+// 	// 计算每段的段落数量
+// 	paragraphsPerSegment := int(math.Ceil(float64(len(paragraphs)) / float64(segmentCount)))
+
+// 	remainder := len(paragraphs) % segmentCount // 余数
+
+// 	// 遍历每个段落，生成相应的字幕文件
+// 	startIndex := 0
+// 	for i := 0; i < segmentCount; i++ {
+// 		// 确定当前段落的结束索引
+// 		endIndex := startIndex + paragraphsPerSegment
+
+// 		// 如果有余数，将余数分配给前面的段落
+// 		if remainder > 0 {
+// 			endIndex++
+// 			remainder--
+// 		}
+
+// 		// 生成当前段落的字幕内容
+// 		segmentSubtitle := strings.Join(paragraphs[startIndex:endIndex], "\n\n")
+// 		// 将当前段落的字幕内容写入文件
+// 		out_srt := "./storage/" + name
+// 		err = os.MkdirAll(out_srt, 0755)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		filename := fmt.Sprintf("subtitle_segment_%d.srt", i)
+// 		masterFilePath := filepath.Join(out_srt, filename)
+// 		err := ioutil.WriteFile(masterFilePath, []byte(segmentSubtitle), 0644)
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		fmt.Println("name:", name)
+// 		fmt.Println("startIndex:", startIndex)
+// 		fmt.Println("endIndex:", endIndex)
+// 		fmt.Println("segmentSubtitle:", segmentSubtitle)
+// 		fmt.Println("masterFilePath:", masterFilePath)
+// 		fmt.Println("生成的字幕片段:", filename)
+
+// 		startIndex = endIndex
+// 	}
+// 	return nil
+// }

@@ -26,6 +26,7 @@ func init() {
 }
 
 func main() {
+
 	// 初始化 SQL
 	bootstrap.SetupDB()
 
