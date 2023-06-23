@@ -120,18 +120,6 @@ func Slice(inputVideo string, _video video.Video) error {
 	_video.MovieLength = formattedDuration
 	// 切片视频
 	fmt.Println("开始切片视频...")
-
-	// cmd = exec.Command("ffmpeg", "-i", url, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-map", "0", "-f", "segment", "-segment_list", outputDir+"/playlist.m3u8", "-segment_time", gconv.String(segmentLength), outputDir+"/output_%03d.ts")
-
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-	// err = cmd.Run()
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	logger.LogError(err)
-	// 	os.Exit(1)
-	// 	return err
-	// }
 	segmentCount := 6
 	seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
 	if seconds < 120 {
@@ -139,12 +127,16 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	// 首先，将完整的 SRT 字幕文件拆分为对应的 6 段字幕文件
 	subtitleFile := "./public/srt/" + name + ".srt"
-	// 拆分字幕文件
-	err = splitSubtitleFile(subtitleFile, segmentCount, name)
-	if err != nil {
-		// 处理错误
-		return err
+	_, err = os.Stat(subtitleFile)
+	if err == nil {
+		// 拆分字幕文件
+		err = splitSubtitleFile(subtitleFile, segmentCount, name)
+		if err != nil {
+			// 处理错误
+			return err
+		}
 	}
+
 	for _, resolution := range resolutions {
 		err = sliceVideo(url, outputDir, seconds, segmentCount, resolution, name)
 		if err != nil {
@@ -349,17 +341,18 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 	waterpng := "./public/" + gconv.String(config.Env("IMG_NAME"))
 	overlaystr := gconv.String(config.Env("OVER_LAY"))
 	var overlay string
+	//[1]format=rgba,colorchannelmixer=aa=0.5[wm];
 	switch {
 	case overlaystr == "右上角":
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:10"
+		overlay = "[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:10"
 	case overlaystr == "右下角":
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
+		overlay = "[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	case overlaystr == "左上角":
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/1:h=-1[wm];[0][wm]overlay=10:10"
+		overlay = "[wm]scale=w=iw/1:h=-1[wm];[0][wm]overlay=10:10"
 	case overlaystr == "左下角":
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
+		overlay = "[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	default:
-		overlay = "[1]format=rgba,colorchannelmixer=aa=0.5[wm];[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=10:10"
+		overlay = "[wm]scale=w=iw/6:h=-1[wm];[0][wm]overlay=10:10"
 	}
 
 	// 设置并发任务的最大数量
@@ -396,11 +389,17 @@ func sliceVideo(inputVideo, outputDir string, video_length float64, segmentCount
 			// 执行切片命令
 			fmt.Print(overlay)
 			subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment_%d.srt", name, segmentIndex)
-			cmd := exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+"_"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+gconv.String(segmentIndex)+"%03d.ts")
+			_, err := os.Stat(subtitleSegmentFile)
+			var cmd *exec.Cmd
+			if err == nil {
+				cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+"_"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+gconv.String(segmentIndex)+"%03d.ts")
+			} else {
+				cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-ss", fmt.Sprintf("%.2f", startTime), "-to", fmt.Sprintf("%.2f", endTime), "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay+",scale="+resolution, "-map", "0", "-map", "1", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+"_"+gconv.String(segmentIndex)+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+gconv.String(segmentIndex)+"%03d.ts")
+			}
 
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			err := cmd.Run()
+			err = cmd.Run()
 
 			if err != nil {
 				errCh <- fmt.Errorf("切片视频分段 %d 出错: %s", segmentIndex, err)
