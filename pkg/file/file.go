@@ -26,7 +26,8 @@ import (
 	"github.com/gogf/gf/util/gconv"
 )
 
-var resolutions = []string{"854:480", "1280:720", "640:360"}
+// var resolutions = []string{"854:480", "1280:720", "640:360"}
+var resolutions = []string{"480", "720", "360"}
 var width = []string{"1000000", "2000000", "500000"}
 
 func SaveUploadVideo(r *http.Request, file *multipart.FileHeader, uploadfile multipart.File) (string, error) {
@@ -101,14 +102,26 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 获取视频时长
 	fmt.Println("获取视频时长...")
 
-	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", url)
+	//cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", url)
+	cmd := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-show_entries", "stream=width,height", "-of", "default=noprint_wrappers=1:nokey=1", url)
+
 	output, err := cmd.Output()
 	if err != nil {
 		//logger.LogError(err)
 		os.Exit(1)
 		return err
 	}
-	duration := string(output)
+	result := string(output)
+
+	lines := strings.Split(result, "\n")
+	fmt.Println("结果--------:", strings.TrimSpace(lines[0]), strings.TrimSpace(lines[1]), strings.TrimSpace(lines[2]))
+	// 获取时间和像素信息
+	width := strings.TrimSpace(lines[0])
+	height := strings.TrimSpace(lines[1])
+	duration := strings.TrimSpace(lines[2])
+
+	rate := gconv.Float64(width) / gconv.Float64(height)
+	fmt.Println("原视频宽高比--------:", rate)
 	formattedDuration, err := formatDuration(duration)
 	if err != nil {
 		fmt.Println("转换出错:", err)
@@ -146,20 +159,36 @@ func Slice(inputVideo string, _video video.Video) error {
 	// 	fmt.Println("切片完成！")
 	// }
 	var wg sync.WaitGroup
+	errChs := make(chan error, len(resolutions))
 	for _, resolution := range resolutions {
 		wg.Add(1)
 		go func(resolution string) {
 			defer wg.Done()
-			err := sliceVideo(url, outputDir, resolution, name)
+			num := gconv.Float64(resolution) * rate
+			// 将 float64 转换为 int
+			intNum := int(num)
+			// 判断是否为奇数，并转换为偶数
+			if intNum%2 != 0 {
+				intNum += 1
+			}
+			fmt.Println("转换视频宽--------:", intNum)
+			err := sliceVideo(url, outputDir, resolution, name, gconv.String(intNum))
 			if err != nil {
 				fmt.Println(err, gconv.Float64(output))
-				return
+				errChs <- fmt.Errorf("切片报错: %s", err)
 			}
 			fmt.Println("切片完成！")
 		}(resolution)
 	}
 	// 等待所有协程执行完毕
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(errChs)
+	}()
+	// 检查错误通道，如果有错误则返回第一个错误
+	for err := range errChs {
+		return err
+	}
 	// 所有协程执行完毕后继续执行后续代码
 	fmt.Println("所有切片完成！")
 	err = createMasterM3U8(outputDir)
@@ -347,10 +376,11 @@ func formatDuration(durationStr string) (string, error) {
 }
 
 // 分段切片
-func sliceVideo(inputVideo, outputDir string, resolution string, name string) error {
+func sliceVideo(inputVideo, outputDir string, resolution string, name string, width string) error {
 	//segmentCount := 5 // 分段数量
 	waterpng := "./public/" + gconv.String(config.Env("IMG_NAME"))
 	overlaystr := gconv.String(config.Env("OVER_LAY"))
+	speed := gconv.String(config.Env("GPU_SPEED"))
 	var overlay string
 	//[1]format=rgba,colorchannelmixer=aa=0.5[wm];
 	switch {
@@ -359,7 +389,7 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string) er
 	case overlaystr == "右下角":
 		overlay = "[1]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	case overlaystr == "左上角":
-		overlay = "[1]scale=w=iw/1:h=-1[wm];[0][wm]overlay=10:10"
+		overlay = "[1]scale=w=iw:h=-1[wm];[0][wm]overlay=10:10"
 	case overlaystr == "左下角":
 		overlay = "[1]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10"
 	default:
@@ -396,16 +426,114 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string) er
 	//startTime := durationPerSegment * float64(segmentIndex)
 	//endTime := startTime + durationPerSegment
 	// 将冒号替换为下划线，以生成合法的文件名
-	resolutionFilename := strings.ReplaceAll(resolution, ":", "_")
+	//resolutionFilename := strings.ReplaceAll(resolution, ":", "_")
+	resolutionFilename := resolution
 	// 执行切片命令
 	fmt.Print(overlay)
 	subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
 	_, err := os.Stat(subtitleSegmentFile)
+	//libx264
 	var cmd *exec.Cmd
 	if err == nil {
-		cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+		if speed == "true" {
+			cmd = exec.Command("ffmpeg",
+				"-hwaccel", "cuvid", // 使用cuvid进行GPU加速
+				"-c:v", "h264_cuvid", // 指定使用GPU解码器
+				"-i", inputVideo,
+				"-i", waterpng,
+				"-i", subtitleSegmentFile,
+				"-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile,
+				"-c:v", "h264_nvenc", // 指定使用GPU编码器
+				//"-rc:v", "vbr_hq",
+				"-cq:v", "30",
+				"-c:a", "copy",
+				"-c:s", "mov_text",
+				"-map", "0",
+				"-map", "1",
+				"-map", "2",
+				"-f", "segment",
+				"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+				"-segment_time", "20",
+				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+
+		} else {
+			//cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+
+			cmd = exec.Command("ffmpeg",
+				"-i", inputVideo,
+				"-i", waterpng,
+				"-c:v", "libx264",
+				"-crf", "30",
+				"-c:a", "copy",
+				"-c:s", "mov_text",
+				"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+subtitleSegmentFile,
+				"-map", "0",
+				"-map", "1",
+				"-map", "2",
+				"-f", "segment",
+				"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+				"-segment_time", gconv.String(20),
+				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
+			)
+		}
+
 	} else {
-		cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay+",scale="+resolution, "-map", "0", "-map", "1", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+		if speed == "true" {
+			// cmd = exec.Command("ffmpeg",
+			// 	"-hwaccel", "cuvid",
+			// 	"-c:v", "h264_cuvid",
+			// 	"-i", inputVideo,
+			// 	"-i", waterpng,
+			// 	"-filter_complex", "[0:v]scale=854:480[bg];[bg][1:v]overlay=10:10[v]",
+			// 	"-map", "[v]",
+			// 	"-c:v", "h264_nvenc",
+			// 	"-rc:v", "vbr",
+			// 	"-cq:v", "20",
+			// 	"-c:a", "copy",
+			// 	"-f", "segment",
+			// 	"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+			// 	"-segment_time", "20",
+			// 	outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+
+			cmd = exec.Command("ffmpeg",
+				"-hwaccel", "cuda",
+				"-c:v", "h264_cuvid",
+				"-i", inputVideo,
+				"-i", waterpng,
+				"-c:v", "h264_nvenc",
+				"-preset", "fast",
+				"-crf", "30",
+				"-c:a", "copy",
+				//"-filter_complex", "[1]scale=w=iw/6:h=-1[wm];[0][wm]overlay=W-w-10:H-h-10,scale=854x480",
+				"-map", "0",
+				"-map", "1",
+				"-b:v", "2M",
+				"-threads", "1",
+				"-f", "segment",
+				"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+				"-segment_time", "20",
+				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
+			)
+
+		} else {
+			// cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-filter_complex", overlay+",scale="+resolution, "-map", "0", "-map", "1", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+
+			cmd = exec.Command("ffmpeg",
+				"-i", inputVideo,
+				"-i", waterpng,
+				"-c:v", "libx264",
+				"-crf", "30",
+				"-c:a", "copy",
+				"-filter_complex", overlay+",scale=w="+width+":h="+resolution,
+				"-map", "0",
+				"-map", "1",
+				"-f", "segment",
+				"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+				"-segment_time", gconv.String(20),
+				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
+			)
+
+		}
 
 	}
 
