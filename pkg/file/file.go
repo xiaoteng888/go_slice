@@ -462,6 +462,7 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 			cmd = exec.Command("ffmpeg",
 				"-i", inputVideo,
 				"-i", waterpng,
+				"-i", subtitleSegmentFile,
 				"-c:v", "libx264",
 				"-crf", "30",
 				"-c:a", "copy",
