@@ -430,7 +430,8 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 	resolutionFilename := resolution
 	// 执行切片命令
 	fmt.Print(overlay)
-	subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
+	//subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
+	subtitleSegmentFile := "./public/srt/" + name + ".srt"
 	_, err := os.Stat(subtitleSegmentFile)
 	//libx264
 	var cmd *exec.Cmd
