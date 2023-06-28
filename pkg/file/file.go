@@ -230,7 +230,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		pkgs3.InitS3()
 	}
 	// 设置并发任务的最大数量
-	maxConcurrency := 5
+	maxConcurrency := 6
 	var wg1 sync.WaitGroup
 	// 创建通道，用于控制并发任务的数量
 	concurrencyCh := make(chan struct{}, maxConcurrency)
