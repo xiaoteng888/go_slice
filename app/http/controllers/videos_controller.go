@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/gogf/gf/util/gconv"
 )
@@ -139,8 +140,15 @@ func (*VideosController) DoSlice() {
 			v.SliceStatus = 2
 			v.Update()
 		}
+		// 设置并发任务的最大数量
+		maxConcurrency := 3
+		var wg sync.WaitGroup
+		// 创建通道，用于控制并发任务的数量
+		concurrencyCh := make(chan struct{}, maxConcurrency)
+		errCh := make(chan error, len(videos))
 
 		for _, _video := range videos {
+			wg.Add(1)
 			if _video.UpUrl == "" {
 				fmt.Print("视频不存在 \n")
 				return
@@ -148,15 +156,40 @@ func (*VideosController) DoSlice() {
 
 			// 将视频文件进行切片
 			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
-			err := files.Slice(_video.UpUrl, _video)
+			// 启动一个协程执行任务
+			go func(_video video.Video) {
 
-			if err != nil {
-				logger.LogError(err)
-				fmt.Print("切片报错", err, "\n")
-				continue
-			} else {
-				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
-			}
+				defer wg.Done()
+
+				// 控制并发任务的数量
+				concurrencyCh <- struct{}{}
+				defer func() { <-concurrencyCh }()
+				err := files.Slice(_video.UpUrl, _video)
+				if err != nil {
+					fmt.Print("切片报错", err, "\n")
+					errCh <- fmt.Errorf("切片报错: %s", err)
+				}
+
+			}(_video)
+
+			// if err != nil {
+			// 	logger.LogError(err)
+			// 	fmt.Print("切片报错", err, "\n")
+			// 	continue
+			// } else {
+			// 	fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
+			// }
+		}
+		// 等待所有协程执行完毕
+		go func() {
+			wg.Wait()
+			close(errCh)
+		}()
+		// 检查错误通道，如果有错误则返回第一个错误
+		for err := range errCh {
+			logger.LogError(err)
+			fmt.Print("切片报错", err, "\n")
+			continue
 		}
 	}
 

@@ -27,7 +27,7 @@ import (
 )
 
 // var resolutions = []string{"854:480", "1280:720", "640:360"}
-var resolutions = []string{"480", "720", "360"}
+var resolutions = []string{"720"}
 var width = []string{"1000000", "2000000", "500000"}
 
 func SaveUploadVideo(r *http.Request, file *multipart.FileHeader, uploadfile multipart.File) (string, error) {
@@ -133,62 +133,39 @@ func Slice(inputVideo string, _video video.Video) error {
 	_video.MovieLength = formattedDuration
 	// 切片视频
 	fmt.Println("开始切片视频...")
-	//segmentCount := 6
-	//seconds, _ := strconv.ParseFloat(strings.TrimSpace(duration), 64)
-	// if seconds < 120 {
-	// 	segmentCount = int(math.Ceil(seconds / 20))
-	// }
-	// 首先，将完整的 SRT 字幕文件拆分为对应的 6 段字幕文件
-	//subtitleFile := "./public/srt/" + name + ".srt"
-	// _, err = os.Stat(subtitleFile)
-	// if err == nil {
-	// 	// 拆分字幕文件
-	// 	err = splitSubtitleFile(subtitleFile, segmentCount, name)
-	// 	if err != nil {
-	// 		// 处理错误
-	// 		return err
-	// 	}
-	// }
 
-	// for _, resolution := range resolutions {
-	// 	err = sliceVideo(url, outputDir, resolution, name)
-	// 	if err != nil {
-	// 		fmt.Println(err, gconv.Float64(output))
-	// 		return err
-	// 	}
-	// 	fmt.Println("切片完成！")
-	// }
-	var wg sync.WaitGroup
-	errChs := make(chan error, len(resolutions))
+	//var wg sync.WaitGroup
+	//errChs := make(chan error, len(resolutions))
 	for _, resolution := range resolutions {
-		wg.Add(1)
-		go func(resolution string) {
-			defer wg.Done()
-			num := gconv.Float64(resolution) * rate
-			// 将 float64 转换为 int
-			intNum := int(num)
-			// 判断是否为奇数，并转换为偶数
-			if intNum%2 != 0 {
-				intNum += 1
-			}
-			fmt.Println("转换视频宽--------:", intNum)
-			err := sliceVideo(url, outputDir, resolution, name, gconv.String(intNum))
-			if err != nil {
-				fmt.Println(err, gconv.Float64(output))
-				errChs <- fmt.Errorf("切片报错: %s", err)
-			}
-			fmt.Println("切片完成！")
-		}(resolution)
+		//wg.Add(1)
+		//go func(resolution string) {
+		//defer wg.Done()
+		num := gconv.Float64(resolution) * rate
+		// 将 float64 转换为 int
+		intNum := int(num)
+		// 判断是否为奇数，并转换为偶数
+		if intNum%2 != 0 {
+			intNum += 1
+		}
+		fmt.Println("转换视频宽--------:", intNum)
+		err := sliceVideo(url, outputDir, resolution, name, gconv.String(intNum))
+		if err != nil {
+			fmt.Println(err, gconv.Float64(output))
+			//errChs <- fmt.Errorf("切片报错: %s", err)
+			return err
+		}
+		fmt.Println("切片完成！")
+		//}(resolution)
 	}
 	// 等待所有协程执行完毕
-	go func() {
-		wg.Wait()
-		close(errChs)
-	}()
-	// 检查错误通道，如果有错误则返回第一个错误
-	for err := range errChs {
-		return err
-	}
+	// go func() {
+	// 	wg.Wait()
+	// 	close(errChs)
+	// }()
+	// // 检查错误通道，如果有错误则返回第一个错误
+	// for err := range errChs {
+	// 	return err
+	// }
 	// 所有协程执行完毕后继续执行后续代码
 	fmt.Println("所有切片完成！")
 	err = createMasterM3U8(outputDir)
