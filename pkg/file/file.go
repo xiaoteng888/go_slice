@@ -694,3 +694,119 @@ func splitSubtitleFile(fullSubtitleFile string, segmentCount int, name string) e
 	}
 	return nil
 }
+
+// 重新上传S3
+func ReUpS3(inputVideo string, _video video.Video) error {
+	// 定义输入视频文件名、输出目录名和切片长度
+	//inputVideo := "./storage/" + name + ".mp4"
+	start := strings.LastIndex(inputVideo, "/") + 1
+	end := strings.Index(strings.ToLower(inputVideo), ".mp4")
+	if end == -1 {
+		end = strings.Index(strings.ToLower(inputVideo), ".ts")
+		if end == -1 {
+			end = strings.Index(strings.ToLower(inputVideo), ".mkv")
+		}
+	}
+	name := inputVideo[start:end]
+	fmt.Print(name)
+	outputDir := "./storage/movie/" + name
+	dirName := path.Base(outputDir)
+	// 显示切片文件信息
+	files, err := os.ReadDir(outputDir)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+		//logger.LogError(err)
+		return err
+	}
+
+	bucket := "yellowbook-media"
+	if pkgs3.S3Client == nil {
+		fmt.Print("初始化 S3 客户端----------\n")
+		// 初始化 S3 客户端
+		pkgs3.InitS3()
+	}
+	// 设置并发任务的最大数量
+	maxConcurrency := 6
+	var wg1 sync.WaitGroup
+	// 创建通道，用于控制并发任务的数量
+	concurrencyCh := make(chan struct{}, maxConcurrency)
+	errCh := make(chan error, len(files))
+
+	for i, info := range files {
+		progress := float64(i+1) / float64(len(files)) * 100
+		//fmt.Print("进度", progress, "%", "\n")
+		wg1.Add(1)
+		_info := info
+		// 启动一个协程执行任务
+		go func(_info fs.DirEntry) {
+
+			defer wg1.Done()
+
+			// 控制并发任务的数量
+			concurrencyCh <- struct{}{}
+			defer func() { <-concurrencyCh }()
+
+			// 模拟处理每个切片文件
+			//bar.Increment()
+
+			// 上传文件到 S3
+			key := path.Join("xj", dirName, _info.Name())
+			data, err := os.Open(outputDir + "/" + _info.Name())
+			//data, err := ioutil.ReadFile(info.Name())
+			if err != nil {
+				_video.SliceStatus = video.STATUS_FAILED
+				_video.Update()
+				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+
+			}
+
+			_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+				Bucket: &bucket,
+				Key:    &key,
+				Body:   data, //bytes.NewReader(data),
+			})
+			if err != nil {
+				_video.SliceStatus = video.STATUS_FAILED
+				_video.Update()
+				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+
+			}
+			fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, _info.Name(), bucket, key)
+			data.Close()
+			// 计算进度百分比并发送消息
+			fmt.Printf("进度百分之：%.2f\n", progress)
+		}(_info)
+
+	}
+	// 等待所有任务完成
+	go func() {
+		wg1.Wait()
+		close(errCh)
+	}()
+
+	// 检查错误通道，如果有错误则返回第一个错误
+	for err := range errCh {
+		return err
+	}
+	_video.SliceStatus = video.STATUS_SUCCESS
+	_video.Update()
+	url := "." + inputVideo
+	fmt.Print(url)
+	_, err = os.Stat(url)
+	if os.IsNotExist(err) {
+		fmt.Print("视频文件不存在", url)
+		return err
+	}
+	//上传成功删除视频
+	os.Remove(url)
+	_, err = os.Stat(outputDir)
+	if err == nil {
+		err = os.RemoveAll(filepath.Join(outputDir))
+		if err != nil {
+			fmt.Println("删除目录出错:", err)
+			return err
+		}
+	}
+	return nil
+}

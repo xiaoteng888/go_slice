@@ -285,15 +285,15 @@ func (*VideosController) DoYestedaySlice() {
 			}
 
 			// 将视频文件进行切片
-			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
-			err := files.Slice(_video.UpUrl, _video)
+			fmt.Print("重新上传S3---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
+			err := files.ReUpS3(_video.UpUrl, _video)
 
 			if err != nil {
 				logger.LogError(err)
-				fmt.Print("切片报错", err, "\n")
+				fmt.Print("重新上传S3报错", err, "\n")
 				continue
 			} else {
-				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "切片完成\n")
+				fmt.Print("视频名:", _video.VideoName, "视频位置：", _video.UpUrl, "重新上传S3完成\n")
 			}
 		}
 	}

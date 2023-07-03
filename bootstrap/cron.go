@@ -54,7 +54,7 @@ func SetupCron() {
 		vc.DoSlice()
 	})
 
-	go c.AddFunc("0 20 * * *", func() {
+	go c.AddFunc("@every 900s", func() {
 		defer func() {
 			if err := recover(); err != nil {
 				logger.LogError(err.(error)) // 记录
@@ -63,7 +63,7 @@ func SetupCron() {
 
 			}
 		}()
-		fmt.Println("\n定时任务-切片昨天切片中的视频：每天8点执行一次", time.Now().Format("2006-01-02 15:04:05"))
+		fmt.Println("\n失败视频重新上传S3：15分钟执行一次", time.Now().Format("2006-01-02 15:04:05"))
 		// 获取互斥锁3
 		mutex3.Lock()
 		defer mutex3.Unlock()
