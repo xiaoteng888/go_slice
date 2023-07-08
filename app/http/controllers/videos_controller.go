@@ -122,7 +122,6 @@ func (*VideosController) SaveToMysql() {
 
 // DoSlice 执行视频切片操作
 func (*VideosController) DoSlice() {
-
 	// 获取未切片的视频
 	videos, err := video.GetMp4()
 

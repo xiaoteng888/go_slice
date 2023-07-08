@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"goblog/app/http/middlewares"
+	"goblog/app/models/video"
 	"goblog/bootstrap"
 	"goblog/config"
 	c "goblog/pkg/config"
@@ -35,9 +37,21 @@ func main() {
 
 	// 初始化路由绑定
 	router := bootstrap.SetupRoute(staticFS)
+	// 初始化切片
+	videos, err := video.GetDoMp4()
+	if err != nil {
+		logger.LogError(err)
+		fmt.Print("500 服务器内部错误")
+	}
+	if len(videos) > 0 {
+		for _, v := range videos {
+			v.SliceStatus = 0
+			v.Update()
+		}
+	}
 	// 定时任务
 	bootstrap.SetupCron()
 
-	err := http.ListenAndServe(":"+c.GetString("app.port"), middlewares.RemoveTrailingSlash(router))
+	err = http.ListenAndServe(":"+c.GetString("app.port"), middlewares.RemoveTrailingSlash(router))
 	logger.LogError(err)
 }

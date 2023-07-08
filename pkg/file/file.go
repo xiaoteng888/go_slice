@@ -235,10 +235,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			data, err := os.Open(outputDir + "/" + _info.Name())
 			//data, err := ioutil.ReadFile(info.Name())
 			if err != nil {
-				_video.SliceStatus = video.STATUS_FAILED
-				_video.Update()
-				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
-
+				errCh <- fmt.Errorf("上传S3打开文件内容失败: %s", err)
 			}
 
 			_, err = pkgs3.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
@@ -247,10 +244,7 @@ func Slice(inputVideo string, _video video.Video) error {
 				Body:   data, //bytes.NewReader(data),
 			})
 			if err != nil {
-				_video.SliceStatus = video.STATUS_FAILED
-				_video.Update()
-				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
-
+				errCh <- fmt.Errorf("上传S3失败: %s", err)
 			}
 			fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, _info.Name(), bucket, key)
 			data.Close()
@@ -266,8 +260,19 @@ func Slice(inputVideo string, _video video.Video) error {
 	}()
 
 	// 检查错误通道，如果有错误则返回第一个错误
+	statusUpdated := false
+
 	for err := range errCh {
-		return err
+		// 如果状态已经修改过，则直接返回错误
+		if statusUpdated {
+			return err
+		}
+
+		// 修改视频状态为失败
+		_video.SliceStatus = video.STATUS_FAILED
+		_video.Update()
+
+		statusUpdated = true
 	}
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
@@ -755,9 +760,7 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 			data, err := os.Open(outputDir + "/" + _info.Name())
 			//data, err := ioutil.ReadFile(info.Name())
 			if err != nil {
-				_video.SliceStatus = video.STATUS_FAILED
-				_video.Update()
-				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+				errCh <- fmt.Errorf("上传S3打开文件内容失败: %s", err)
 
 			}
 
@@ -767,9 +770,7 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 				Body:   data, //bytes.NewReader(data),
 			})
 			if err != nil {
-				_video.SliceStatus = video.STATUS_FAILED
-				_video.Update()
-				errCh <- fmt.Errorf("上传S3修改状态失败: %s", err)
+				errCh <- fmt.Errorf("上传S3失败: %s", err)
 
 			}
 			fmt.Printf("上传 %s/%s 到 S3://%s/%s\n", outputDir, _info.Name(), bucket, key)
@@ -786,9 +787,21 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 	}()
 
 	// 检查错误通道，如果有错误则返回第一个错误
+	statusUpdated := false
+
 	for err := range errCh {
-		return err
+		// 如果状态已经修改过，则直接返回错误
+		if statusUpdated {
+			return err
+		}
+
+		// 修改视频状态为失败
+		_video.SliceStatus = video.STATUS_FAILED
+		_video.Update()
+
+		statusUpdated = true
 	}
+
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
 	url := "." + inputVideo

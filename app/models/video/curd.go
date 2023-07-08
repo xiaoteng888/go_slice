@@ -63,3 +63,14 @@ func GetYestedayMp4() ([]Video, error) {
 	}
 	return videos, nil
 }
+
+// 获取正在切片视频
+func GetDoMp4() ([]Video, error) {
+	var videos []Video
+	result := model.DB.Table(TableName).Where("win_no = ?", config.Env("WIN_NO", 0)).Where("slice_status = ?", STATUS_ON).Find(&videos)
+	if err := result.Error; err != nil {
+		logger.LogError(err)
+		return videos, err
+	}
+	return videos, nil
+}
