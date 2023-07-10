@@ -147,29 +147,30 @@ func (*VideosController) DoSlice() {
 		errCh := make(chan error, len(videos))
 
 		for _, _video := range videos {
+
 			wg.Add(1)
 			if _video.UpUrl == "" {
 				fmt.Print("视频不存在 \n")
 				return
 			}
-
+			_v := _video
 			// 将视频文件进行切片
-			fmt.Print("开始切片---- 视频名：", _video.VideoName, "视频位置：", _video.UpUrl, "\n")
+			fmt.Print("开始切片---- 视频名：", _v.VideoName, "视频位置：", _v.UpUrl, "\n")
 			// 启动一个协程执行任务
-			go func(_video video.Video) {
-
+			go func(_v video.Video) {
+				fmt.Print(_v.SliceStatus)
 				defer wg.Done()
 
 				// 控制并发任务的数量
 				concurrencyCh <- struct{}{}
 				defer func() { <-concurrencyCh }()
-				err := files.Slice(_video.UpUrl, _video)
+				err := files.Slice(_v.UpUrl, _v)
 				if err != nil {
 					fmt.Print("切片报错", err, "\n")
 					errCh <- fmt.Errorf("切片报错: %s", err)
 				}
 
-			}(_video)
+			}(_v)
 
 			// if err != nil {
 			// 	logger.LogError(err)

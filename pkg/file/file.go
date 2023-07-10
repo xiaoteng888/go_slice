@@ -132,7 +132,6 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 
 	fmt.Println("格式化后的时长:", formattedDuration)
-
 	_video.MovieLength = formattedDuration
 	// 切片视频
 	fmt.Println("开始切片视频...")
@@ -160,6 +159,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		fmt.Println("切片完成！")
 		//}(resolution)
 	}
+
 	// 等待所有协程执行完毕
 	// go func() {
 	// 	wg.Wait()
@@ -184,6 +184,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		//logger.LogError(err)
 		return err
 	}
+
 	fmt.Println("切片文件列表：")
 	dirName := path.Base(outputDir)
 	for _, file := range files {
