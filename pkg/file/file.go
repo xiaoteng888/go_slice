@@ -69,6 +69,9 @@ func Slice(inputVideo string, _video video.Video) error {
 		end = strings.Index(strings.ToLower(inputVideo), ".ts")
 		if end == -1 {
 			end = strings.Index(strings.ToLower(inputVideo), ".mkv")
+			if end == -1 {
+				end = strings.Index(strings.ToLower(inputVideo), ".mov")
+			}
 		}
 	}
 	name := inputVideo[start:end]
@@ -450,6 +453,8 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 				"-crf", "30",
 				"-c:a", "copy",
 				"-c:s", "mov_text",
+				"-scodec", "mov_text",
+				"-sub_charenc", "UTF-8",
 				"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+subtitleSegmentFile,
 				"-map", "0",
 				"-map", "1",
