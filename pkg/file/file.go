@@ -14,10 +14,12 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	_neturl "net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -194,7 +196,10 @@ func Slice(inputVideo string, _video video.Video) error {
 		// 获取文件扩展名
 		ext := filepath.Ext(file.Name())
 		if ext == ".m3u8" {
-
+			b := ContainsSpecialChar(dirName)
+			if b {
+				dirName = _neturl.PathEscape(dirName)
+			}
 			_video.Url = "/xj/" + dirName + "/" + "playlist.m3u8"
 			_video.Update()
 		}
@@ -828,4 +833,11 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 		}
 	}
 	return nil
+}
+
+// 判断字符串是否包含特殊字符
+func ContainsSpecialChar(str string) bool {
+	// 使用正则表达式匹配特殊字符
+	regex := regexp.MustCompile("[^a-zA-Z0-9]+")
+	return regex.MatchString(str)
 }

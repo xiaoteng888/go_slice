@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gogf/gf/util/gconv"
@@ -203,9 +204,10 @@ func PathToMysql() {
 		if err != nil {
 			return err
 		}
+		_name := strings.ReplaceAll(info.Name(), " ", "")
 		if !info.IsDir() {
 			// 先查询数据库有无这个视频
-			_one, _ := video.Get(info.Name())
+			_one, _ := video.Get(_name)
 			if _one.ID > 0 {
 				//查到就不执行
 				fmt.Println("上个扫描任务正在执行：影片---", _one.VideoName, "---已经存在或者正在切片上传S3")
@@ -219,7 +221,7 @@ func PathToMysql() {
 				return err
 			}
 
-			uprootFile := filepath.Join(uproot, info.Name())
+			uprootFile := filepath.Join(uproot, _name)
 			targetFile, err := os.Create(uprootFile)
 			if err != nil {
 				return err
@@ -244,7 +246,7 @@ func PathToMysql() {
 			fmt.Println(uprootFile)
 			_video := video.Video{
 				UpUrl:     "/" + filepath.ToSlash(uprootFile),
-				VideoName: info.Name(),
+				VideoName: _name,
 				WinNo:     gconv.Int64(config.Env("WIN_NO", 0)),
 			}
 			_video.Update()
