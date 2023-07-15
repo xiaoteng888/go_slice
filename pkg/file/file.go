@@ -198,7 +198,7 @@ func Slice(inputVideo string, _video video.Video) error {
 		if ext == ".m3u8" {
 			b := ContainsSpecialChar(dirName)
 			if b {
-				dirName = _neturl.PathEscape(dirName)
+				dirName = _neturl.QueryEscape(dirName)
 			}
 			_video.Url = "/xj/" + dirName + "/" + "playlist.m3u8"
 			_video.Update()
