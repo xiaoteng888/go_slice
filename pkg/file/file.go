@@ -240,7 +240,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			//bar.Increment()
 
 			// 上传文件到 S3
-			key := path.Join("xj", dirName, _info.Name())
+			key := path.Join("xj", path.Base(outputDir), _info.Name())
 			data, err := os.Open(outputDir + "/" + _info.Name())
 			//data, err := ioutil.ReadFile(info.Name())
 			if err != nil {
