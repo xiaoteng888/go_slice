@@ -838,6 +838,6 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 // 判断字符串是否包含特殊字符
 func ContainsSpecialChar(str string) bool {
 	// 使用正则表达式匹配特殊字符
-	regex := regexp.MustCompile("[^a-zA-Z0-9]+")
+	regex := regexp.MustCompile(`[ <>|%"'=?+,#;]`)
 	return regex.MatchString(str)
 }
