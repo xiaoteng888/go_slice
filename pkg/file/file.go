@@ -14,12 +14,10 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	_neturl "net/url"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -188,7 +186,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 
 	fmt.Println("切片文件列表：")
-	dirName := path.Base(outputDir)
+	//dirName := path.Base(outputDir)
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -196,11 +194,11 @@ func Slice(inputVideo string, _video video.Video) error {
 		// 获取文件扩展名
 		ext := filepath.Ext(file.Name())
 		if ext == ".m3u8" {
-			b := ContainsSpecialChar(dirName)
-			if b {
-				dirName = _neturl.QueryEscape(dirName)
-			}
-			_video.Url = "/xj/" + dirName + "/" + "playlist.m3u8"
+			// b := ContainsSpecialChar(dirName)
+			// if b {
+			// 	dirName = _neturl.QueryEscape(dirName)
+			// }
+			_video.Url = "/xj/" + _video.GetStringID() + "/" + "playlist.m3u8"
 			_video.Update()
 		}
 
@@ -240,7 +238,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			//bar.Increment()
 
 			// 上传文件到 S3
-			key := path.Join("xj", path.Base(outputDir), _info.Name())
+			key := path.Join("xj", _video.GetStringID(), _info.Name())
 			data, err := os.Open(outputDir + "/" + _info.Name())
 			//data, err := ioutil.ReadFile(info.Name())
 			if err != nil {
@@ -726,7 +724,7 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 	name := inputVideo[start:end]
 	fmt.Print(name)
 	outputDir := "./storage/movie/" + name
-	dirName := path.Base(outputDir)
+	//dirName := path.Base(outputDir)
 	// 显示切片文件信息
 	files, err := os.ReadDir(outputDir)
 	if err != nil {
@@ -767,7 +765,7 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 			//bar.Increment()
 
 			// 上传文件到 S3
-			key := path.Join("xj", dirName, _info.Name())
+			key := path.Join("xj", _video.GetStringID(), _info.Name())
 			data, err := os.Open(outputDir + "/" + _info.Name())
 			//data, err := ioutil.ReadFile(info.Name())
 			if err != nil {
@@ -836,8 +834,8 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 }
 
 // 判断字符串是否包含特殊字符
-func ContainsSpecialChar(str string) bool {
-	// 使用正则表达式匹配特殊字符
-	regex := regexp.MustCompile(`[ <>|%"'=?+,#;]`)
-	return regex.MatchString(str)
-}
+// func ContainsSpecialChar(str string) bool {
+// 	// 使用正则表达式匹配特殊字符
+// 	regex := regexp.MustCompile(`[ <>|%"'=?+,#;]`)
+// 	return regex.MatchString(str)
+// }
