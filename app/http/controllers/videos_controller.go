@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/gogf/gf/util/gconv"
@@ -204,7 +203,7 @@ func PathToMysql() {
 		if err != nil {
 			return err
 		}
-		_name := strings.ReplaceAll(info.Name(), " ", "")
+		_name := info.Name() //strings.ReplaceAll(info.Name(), " ", "")
 		if !info.IsDir() {
 			// 先查询数据库有无这个视频
 			_one, _ := video.Get(_name)

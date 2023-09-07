@@ -150,7 +150,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			intNum += 1
 		}
 		fmt.Println("转换视频宽--------:", intNum)
-		err := sliceVideo(url, outputDir, resolution, name, gconv.String(intNum))
+		err := sliceVideo(url, outputDir, resolution, name, gconv.String(intNum), _video.GetStringID())
 		if err != nil {
 			fmt.Println(err, gconv.Float64(output))
 			//errChs <- fmt.Errorf("切片报错: %s", err)
@@ -365,7 +365,7 @@ func formatDuration(durationStr string) (string, error) {
 }
 
 // 分段切片
-func sliceVideo(inputVideo, outputDir string, resolution string, name string, width string) error {
+func sliceVideo(inputVideo, outputDir string, resolution string, name string, width string, str_id string) error {
 	//segmentCount := 5 // 分段数量
 	waterpng := "./public/" + gconv.String(config.Env("IMG_NAME"))
 	overlaystr := gconv.String(config.Env("OVER_LAY"))
@@ -421,10 +421,21 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 	fmt.Print(overlay)
 	//subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
 	subtitleSegmentFile := "./public/srt/" + name + ".srt"
+	new_name := "./public/srt/" + str_id + ".srt"
 	_, err := os.Stat(subtitleSegmentFile)
+
 	//libx264
 	var cmd *exec.Cmd
 	if err == nil {
+		// 尝试重命名文件
+		err := os.Rename(subtitleSegmentFile, new_name)
+		if err != nil {
+			fmt.Println("重命名文件时出错:", err)
+			return err
+		}
+
+		fmt.Println("文件已成功重命名为", new_name)
+
 		if speed == "true" {
 			cmd = exec.Command("ffmpeg",
 				"-hwaccel", "cuvid", // 使用cuvid进行GPU加速
@@ -452,14 +463,12 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 			cmd = exec.Command("ffmpeg",
 				"-i", inputVideo,
 				"-i", waterpng,
-				"-i", subtitleSegmentFile,
+				"-i", new_name,
 				"-c:v", "libx264",
 				"-crf", "30",
 				"-c:a", "copy",
 				"-c:s", "mov_text",
-				//"-scodec", "mov_text",
-				//"-sub_charenc", "UTF-8",
-				"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+subtitleSegmentFile,
+				"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+new_name,
 				"-map", "0",
 				"-map", "1",
 				"-map", "2",
