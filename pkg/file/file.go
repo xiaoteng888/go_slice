@@ -422,19 +422,25 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 	//subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
 	subtitleSegmentFile := "./public/srt/" + name + ".srt"
 	new_name := "./public/srt/" + str_id + ".srt"
-	_, err := os.Stat(subtitleSegmentFile)
+	_, err := os.Stat(new_name)
+	if err != nil {
+		_, err = os.Stat(subtitleSegmentFile)
+	}
 
 	//libx264
 	var cmd *exec.Cmd
 	if err == nil {
-		// 尝试重命名文件
-		err := os.Rename(subtitleSegmentFile, new_name)
-		if err != nil {
-			fmt.Println("重命名文件时出错:", err)
-			return err
-		}
+		_, err = os.Stat(subtitleSegmentFile)
+		if err == nil {
+			// 尝试重命名文件
+			err := os.Rename(subtitleSegmentFile, new_name)
+			if err != nil {
+				fmt.Println("重命名文件时出错:", err)
+				return err
+			}
 
-		fmt.Println("文件已成功重命名为", new_name)
+			fmt.Println("文件已成功重命名为", new_name)
+		}
 
 		if speed == "true" {
 			cmd = exec.Command("ffmpeg",
