@@ -284,6 +284,7 @@ func Slice(inputVideo string, _video video.Video) error {
 	}
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
+	_video.Update1()
 	//上传成功删除视频
 	os.Remove(url)
 	_, err = os.Stat(outputDir)

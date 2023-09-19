@@ -27,6 +27,16 @@ func (video *Video) Update() (rowsAffected int64, err error) {
 	return result.RowsAffected, nil
 }
 
+// 修改视频
+func (video *Video) Update1() (rowsAffected int64, err error) {
+	result := model.DB1.Table(TableName).Save(&video)
+	if err := result.Error; err != nil {
+		logger.LogError(err)
+		return 0, err
+	}
+	return result.RowsAffected, nil
+}
+
 // 获取未切片视频
 func GetMp4() ([]Video, error) {
 	var videos []Video

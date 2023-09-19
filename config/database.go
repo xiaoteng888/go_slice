@@ -10,12 +10,17 @@ func init() {
 		"mysql": map[string]interface{}{
 
 			// 数据库连接信息
-			"host":     config.Env("DB_HOST", "127.0.0.1"),
-			"port":     config.Env("DB_PORT", "3306"),
-			"database": config.Env("DB_DATABASE", "goblog"),
-			"username": config.Env("DB_USERNAME", ""),
-			"password": config.Env("DB_PASSWORD", ""),
-			"charset":  "utf8mb4",
+			"host":      config.Env("DB_HOST", "127.0.0.1"),
+			"port":      config.Env("DB_PORT", "3306"),
+			"database":  config.Env("DB_DATABASE", "goblog"),
+			"username":  config.Env("DB_USERNAME", ""),
+			"password":  config.Env("DB_PASSWORD", ""),
+			"host1":     config.Env("DB1_HOST", "127.0.0.1"),
+			"port1":     config.Env("DB1_PORT", "3306"),
+			"database1": config.Env("DB1_DATABASE", "goblog"),
+			"username1": config.Env("DB1_USERNAME", ""),
+			"password1": config.Env("DB1_PASSWORD", ""),
+			"charset":   "utf8mb4",
 
 			// 连接池配置
 			"max_idle_connections": config.Env("DB_MAX_IDLE_CONNECTIONS", 25),
