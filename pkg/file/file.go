@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -421,7 +422,9 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 	fmt.Print(overlay)
 	//subtitleSegmentFile := fmt.Sprintf("./storage/%s/subtitle_segment.srt", name)
 	subtitleSegmentFile := "./public/srt/" + name + ".srt"
+	vi_name := "./public/srt/vi_" + name + ".srt"
 	new_name := "./public/srt/" + str_id + ".srt"
+	new_vi_name := "./public/srt/vi_" + str_id + ".srt"
 	_, err := os.Stat(new_name)
 	if err != nil {
 		_, err = os.Stat(subtitleSegmentFile)
@@ -464,25 +467,75 @@ func sliceVideo(inputVideo, outputDir string, resolution string, name string, wi
 				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
 
 		} else {
-			//cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+			_, err := os.Stat(vi_name)
+			if err != nil {
+				_, err = os.Stat(new_vi_name)
+			} else {
+				err := os.Rename(vi_name, new_vi_name)
+				if err != nil {
+					fmt.Println("重命名文件时出错:", err)
+					return err
+				}
 
-			cmd = exec.Command("ffmpeg",
-				"-i", inputVideo,
-				"-i", waterpng,
-				"-i", new_name,
-				"-c:v", "libx264",
-				"-crf", "30",
-				"-c:a", "copy",
-				"-c:s", "mov_text",
-				"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+new_name,
-				"-map", "0",
-				"-map", "1",
-				"-map", "2",
-				"-f", "segment",
-				"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
-				"-segment_time", gconv.String(20),
-				outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
-			)
+				fmt.Println("文件已成功重命名为", new_vi_name)
+			}
+			//cmd = exec.Command("ffmpeg", "-i", inputVideo, "-i", waterpng, "-i", subtitleSegmentFile, "-c:v", "libx264", "-crf", "30", "-c:a", "copy", "-c:s", "mov_text", "-filter_complex", overlay+",scale="+resolution+",subtitles=filename="+subtitleSegmentFile, "-map", "0", "-map", "1", "-map", "2", "-f", "segment", "-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8", "-segment_time", gconv.String(20), outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts")
+			if err != nil {
+				cmd = exec.Command("ffmpeg",
+					"-i", inputVideo,
+					"-i", waterpng,
+					"-i", new_name,
+					"-c:v", "libx264",
+					"-crf", "30",
+					"-c:a", "copy",
+					"-c:s", "mov_text",
+					"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+new_name,
+					"-map", "0",
+					"-map", "1",
+					"-map", "2",
+					"-f", "segment",
+					"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+					"-segment_time", gconv.String(20),
+					outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
+				)
+			} else {
+				//"-filter_complex", overlay+",scale=w="+width+":h="+resolution+";[2:s][3:s]subtitles="+merge_name,
+				merge_name := "./public/srt/vi_" + str_id + "merge.srt"
+				_, err := os.Stat(merge_name)
+				if err != nil {
+					targetFile, err := os.Create(merge_name)
+					if err != nil {
+						fmt.Println("创建合并字幕文件时出错:", err)
+						return err
+					}
+
+					defer targetFile.Close()
+
+					err = mergeSubtitles(new_name, new_vi_name, merge_name)
+					if err != nil {
+						fmt.Println("合并字幕文件出错:", err)
+						return err
+					}
+				}
+
+				cmd = exec.Command("ffmpeg",
+					"-i", inputVideo,
+					"-i", waterpng,
+					"-i", merge_name,
+					"-c:v", "libx264",
+					"-crf", "30",
+					"-c:a", "copy",
+					"-c:s", "mov_text",
+					"-filter_complex", overlay+",scale=w="+width+":h="+resolution+",subtitles=filename="+merge_name,
+					"-map", "0",
+					"-map", "1",
+					"-map", "2",
+					"-f", "segment",
+					"-segment_list", outputDir+"/playlist_"+resolutionFilename+".m3u8",
+					"-segment_time", gconv.String(20),
+					outputDir+"/output_"+resolutionFilename+"_"+"%03d.ts",
+				)
+			}
 		}
 
 	} else {
@@ -854,3 +907,60 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 // 	regex := regexp.MustCompile(`[ <>|%"'=?+,#;]`)
 // 	return regex.MatchString(str)
 // }
+
+// 合并两个字幕文件
+func mergeSubtitles(subtitleFile1, subtitleFile2, mergedSubtitleFile string) error {
+	// 打开第一个字幕文件
+	file1, err := os.Open(subtitleFile1)
+	if err != nil {
+		return err
+	}
+	defer file1.Close()
+
+	// 打开第二个字幕文件
+	file2, err := os.Open(subtitleFile2)
+	if err != nil {
+		return err
+	}
+	defer file2.Close()
+
+	// 创建一个新的合并字幕文件
+	mergedFile, err := os.Create(mergedSubtitleFile)
+	if err != nil {
+		return err
+	}
+	defer mergedFile.Close()
+
+	// 逐行读取第一个字幕文件并写入合并文件
+	scanner := bufio.NewScanner(file1)
+	for scanner.Scan() {
+		line := scanner.Text()
+		_, err := mergedFile.WriteString(line + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	// 写入一个空行来分隔两个字幕文件
+	_, err = mergedFile.WriteString("\n")
+	if err != nil {
+		return err
+	}
+
+	// 逐行读取第二个字幕文件并写入合并文件
+	scanner = bufio.NewScanner(file2)
+	for scanner.Scan() {
+		line := scanner.Text()
+		_, err := mergedFile.WriteString(line + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	fmt.Println("字幕文件已成功合并到", mergedSubtitleFile)
+	return nil
+}
