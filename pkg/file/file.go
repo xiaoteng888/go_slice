@@ -882,6 +882,7 @@ func ReUpS3(inputVideo string, _video video.Video) error {
 
 	_video.SliceStatus = video.STATUS_SUCCESS
 	_video.Update()
+	_video.Update1()
 	url := "." + inputVideo
 	fmt.Print(url)
 	_, err = os.Stat(url)
