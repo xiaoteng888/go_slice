@@ -199,7 +199,7 @@ func Slice(inputVideo string, _video video.Video) error {
 			// if b {
 			// 	dirName = _neturl.QueryEscape(dirName)
 			// }
-			_video.Url = "/xj/" + _video.GetStringID() + "/" + "playlist.m3u8"
+			_video.Url = "/xj/" + _video.GetStringID() + "/" + "playlist_720.m3u8"
 			_video.Update()
 		}
 
