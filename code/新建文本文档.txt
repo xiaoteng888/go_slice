@@ -1,0 +1,53 @@
+sudo systemctl restart nginx
+sudo service php7.1-fpm restart
+客服
+php think kefu start d
+php think kefu stop
+多租户
+php start.php start -d
+php start.php stop
+fastadmin nginx伪静态正确配置
+location / {
+        if (!-e $request_filename) {
+            rewrite  ^(.+?\.php)(/.+)$ $1?s=$2 last;
+            rewrite  ^(.*)$  /index.php?s=/$1  last;
+            break;
+        }
+    }
+ 'kobepassword'
+/usr/local/nginx/conf/vhosts/
+/data/www/duozuhu/public
+/usr/local/nginx/sbin/nginx
+
+
+COMPOSER_MEMORY_LIMIT=-1 composer require doctrine/dbal:^2.12.1
+--no-bin-links 
+npm config set bin-links false
+lsof -i:1818
+Encoding.default_external = Encoding.find('Windows-1251')
+Encoding.default_internal = Encoding.find('Windows-1251')
+
+3254838293   zeng20050421zeng
+605184327    zeng13550646334
+飞度：9182919654   zeng20050421
+微信： zeng1346784464   chenmiao520
+gmail： heman8888888888@gmail.com   zeng20050421
+lazada: 9182919654   zeng20050421
+nico: 15108244863   20050421
+淘宝：我们的心918   zeng20050421 
+百度：我们的心918   zeng20050421       
+推特：lvmao888   lvmao888666
+天猫： 我们的心54  zeng139810123
+jd : zeng8818512   20050421
+
+非龙网：zeng8818512`      Zzeng20050421
+github: xiaoteng888    zeng20050421
+慕课网：15108244863    zeng20050421
+lazada: 9182919654    zeng20050421
+learnku: kobe6          zeng20050421
+
+
+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
+
+
+ 

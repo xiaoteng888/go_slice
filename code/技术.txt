@@ -1,0 +1,70 @@
+sudo systemctl restart nginx
+sudo service php7.3-fpm restart
+
+location / {
+        if (!-e $request_filename) {
+            rewrite  ^(.+?\.php)(/.+)$ $1?s=$2 last;
+            rewrite  ^(.*)$  /index.php?s=/$1  last;
+            break;
+        }
+    }
+vagrant provision && vagrant reload
+
+nginx: 日志 cat tp.test-access.log | more
+通过日志分析QPS高点和低点
+去重统计从大到小高峰排序： cat tp.test-access.log | awk '{print $4}' | uniq -c | sort -n
+去重统计从小到大低峰排序： cat tp.test-access.log | awk '{print $4}' | uniq -c | sort -r
+去重统计从大到小高峰排序查询某个接口：cat tp.test-access.log | grep "/api/smsSend" | awk '{print $4}' | uniq -c | sort -n
+       
+查看所有的 Vagrant 主机：vagrant global-status --prune
+删除homestead  ：   vagrant destroy 1a2b3c4d 
+商品PV（page view）统计
+用redis的Cache::inc("key_'.$id);     
+
+//redis有序集合: ZADD(key , score, value)
+用redis获取有序集合:zRangeByScore(key, 0, time(), [LIMIT => [0, 1]])   键名, score最小值, socre最大值, [limit 第几个开始   获取几条]
+Redis Zrem 命令用于移除有序集中的一个或多个成员，不存在的成员将被忽略
+ZREM(key, member)   键 ,  值
+1024 * 带宽 * 8(等待时长) / 60 (页面大小KB) = 并发人数
+
+mysql主从同步：从库去拿 binlog日志，拿到后写入 relay日志， 最后sql写入数据同步到从库
+
+数据库二进制文件数据导入文本: mysqlbinlog --no-defaults --base64-output=decode-rows -v --start-datetime="2022-05-10 00:00:00" 
+--stop-datetime="2022-05-30 23:59:59" -d php_oa /data/mysqldb/mysql-bin/mysql3306-bin.000008 >output1.txt
+
+fpm 的运行模式有三种：pm = dynamic
+ondemand 按需创建：用时创建，不用时销毁
+dynamic 动态创建：启动时创建固定进程数，可以设置最大并存进程数，空闲进程数最小值，空闲进程数最大值， 每个进程最多处理多少个请求
+static 固定数量：固定进程数量是性能最好，资源利用率最高的运行方式，创建 PHP 服务器集群，希望每台机器都能物尽其用，
+FPM 启动时创建的进程数，，并且会一直保持这个数，每个进程最多处理多少个请求，超过此值将自动销毁
+
+FPM 进程池的配置信息位于：/etc/php/7.4/fpm/pool.d/www.conf
+; 默认是 10 秒，超过 10 秒即销毁
+pm.process_idle_timeout = 10s;
+; 最大并存进程数，超过此值将不再创建
+pm.max_children = 50
+; 每个进程最多处理多少个请求，超过此值将自动销毁
+pm.max_requests = 1000
+
+composer 忽略错误：--ignore-platform-reqs
+supervisorctl update   //重新加载
+sudo supervisorctl start xhs 启动
+sudo supervisorctl restart xhs  // 重启
+systemctl restart php-fpm-72.service
+
+[program:xhs]
+command=php /www/wwwroot/api/artisan queue:work
+autostart=true
+autorestart=true
+user=root
+redirect_stderr=true
+stdout_logfile=/www/wwwroot/api/storage/logs/worker.log   Supervisor 的配置
+
+php artisan update_user_play_times 
+php artisan Create_Table
+sudo supervisorctl restart xhs  // 重启
+sudo service crond restart
+
+php artisan queue:work
+LiFQS123
+
